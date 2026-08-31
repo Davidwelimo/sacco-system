@@ -9,6 +9,51 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+# Automatic Database & Admin Initialization
+def init_db():
+    conn = sqlite3.connect('sacco.db')
+    cursor = conn.cursor()
+    
+    # Create tables if they do not exist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS members (
+            member_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            phone TEXT,
+            date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS transactions (
+            tx_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            member_id INTEGER,
+            amount REAL NOT NULL,
+            tx_type TEXT NOT NULL,
+            date_recorded TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            recorded_by TEXT,
+            FOREIGN KEY (member_id) REFERENCES members (member_id)
+        )
+    ''')
+    
+    # Seed default Admin account if not present
+    cursor.execute("SELECT * FROM users WHERE username = 'admin'")
+    if not cursor.fetchone():
+        cursor.execute("INSERT INTO users (username, password, role) VALUES ('admin', 'admin123', 'Admin')")
+        conn.commit()
+    
+    conn.close()
+
+# Run initialization on boot
+init_db()
+
 def login_required(f):
     def wrapper(*args, **kwargs):
         if 'username' not in session:
