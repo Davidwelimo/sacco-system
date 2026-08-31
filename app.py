@@ -6,10 +6,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "sacco_zero_start_secret_key")
 
 # ==========================================
-# DATA STORES (STARTS AT ZERO)
+# IN-MEMORY DATA STORES (STARTS AT ZERO)
 # ==========================================
 
-# Pre-created Admin Account
+# Pre-created Admin account
 USERS = {
     "admin": {
         "password": "admin123",
@@ -30,7 +30,7 @@ PAYMENTS = [] # { id, username, member_name, amount, ref_code, status, date }
 
 
 # ==========================================
-# TEMPLATES
+# HTML TEMPLATES
 # ==========================================
 
 LOGIN_HTML = """
@@ -45,7 +45,7 @@ LOGIN_HTML = """
         h2 { color: #1a365d; text-align: center; margin-bottom: 20px; }
         .form-group { margin-bottom: 12px; }
         label { font-size: 13px; font-weight: bold; color: #4a5568; display: block; margin-bottom: 4px; }
-        input { width: 100%; padding: 9px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 9px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
         .btn { width: 100%; padding: 10px; background: #2b6cb0; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-alt { background: #38a169; }
         .tab-btn { background: none; border: none; color: #2b6cb0; cursor: pointer; text-decoration: underline; font-size: 13px; margin-top: 15px; width: 100%; text-align: center; }
