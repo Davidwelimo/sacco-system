@@ -29,11 +29,18 @@ class User(db.Model):
     reset_requested = db.Column(db.Boolean, default=False)
     reset_otp = db.Column(db.String(10), nullable=True)
     contributions = db.relationship('Contribution', backref='user', cascade='all, delete-orphan', lazy=True)
+    loans = db.relationship('Loan', backref='user', cascade='all, delete-orphan', lazy=True)
 
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     type = db.Column(db.String(50), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(50), default='Pending')
+
+class Loan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
 
@@ -61,7 +68,7 @@ def register():
             return redirect(url_for('register'))
             
         hashed_pw = generate_password_hash(password, method='scrypt')
-        new_user = User(username=username, password=hashed_pw)
+        new_user = User(username=username, password=hashed_pw, is_admin=False)
         db.session.add(new_user)
         db.session.commit()
         flash('Account created successfully! Please log in.')
@@ -125,9 +132,11 @@ def reset_password():
 @login_required
 def dashboard():
     user = User.query.get(session['user_id'])
+    if user.is_admin:
+        return redirect(url_for('admin_dashboard'))
     contributions = Contribution.query.filter_by(user_id=user.id).all()
-    members = User.query.all()
-    return render_template('dashboard.html', user=user, contributions=contributions, members=members)
+    loans = Loan.query.filter_by(user_id=user.id).all()
+    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans)
 
 @app.route('/upload_profile_pic', methods=['POST'])
 @login_required
@@ -161,15 +170,48 @@ def contribute():
     flash('Contribution submitted for admin approval.')
     return redirect(url_for('dashboard'))
 
+@app.route('/request_loan', methods=['POST'])
+@login_required
+def request_loan():
+    user = User.query.get(session['user_id'])
+    amount = request.form.get('amount')
+    if amount:
+        new_loan = Loan(user_id=user.id, amount=float(amount), status='Pending')
+        db.session.add(new_loan)
+        db.session.commit()
+        flash('Loan request submitted successfully.')
+    else:
+        flash('Invalid loan amount.')
+    return redirect(url_for('dashboard'))
+
+@app.route('/transfer_emergency', methods=['POST'])
+@login_required
+def transfer_emergency():
+    user = User.query.get(session['user_id'])
+    amount = request.form.get('amount')
+    if amount:
+        transfer_amt = float(amount)
+        if user.emergency_balance >= transfer_amt:
+            user.emergency_balance -= transfer_amt
+            user.weekly_balance += transfer_amt # or designated primary wallet balance
+            db.session.commit()
+            flash('Emergency funds transferred successfully.')
+        else:
+            flash('Insufficient emergency fund balance.')
+    else:
+        flash('Invalid transfer amount.')
+    return redirect(url_for('dashboard'))
+
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
     user = User.query.get(session['user_id'])
     if not user.is_admin:
         return redirect(url_for('dashboard'))
-    pending = Contribution.query.filter_by(status='Pending').all()
-    members = User.query.all()
-    return render_template('admin.html', pending=pending, members=members)
+    pending_contribs = Contribution.query.filter_by(status='Pending').all()
+    pending_loans = Loan.query.filter_by(status='Pending').all()
+    members = User.query.filter_by(is_admin=False).all()
+    return render_template('admin.html', pending=pending_contribs, pending_loans=pending_loans, members=members)
 
 @app.route('/admin/approve/<int:contrib_id>')
 @login_required
@@ -218,6 +260,34 @@ def decline_contribution(contrib_id):
         contrib.status = 'Declined'
         db.session.commit()
         flash('Contribution declined.')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/approve_loan/<int:loan_id>')
+@login_required
+def approve_loan(loan_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
+        return redirect(url_for('dashboard'))
+        
+    loan = Loan.query.get_or_404(loan_id)
+    if loan.status == 'Pending':
+        loan.status = 'Approved'
+        db.session.commit()
+        flash('Loan approved successfully!')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/decline_loan/<int:loan_id>')
+@login_required
+def decline_loan(loan_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
+        return redirect(url_for('dashboard'))
+        
+    loan = Loan.query.get_or_404(loan_id)
+    if loan.status == 'Pending':
+        loan.status = 'Declined'
+        db.session.commit()
+        flash('Loan declined.')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/delete_user/<int:user_id>')
