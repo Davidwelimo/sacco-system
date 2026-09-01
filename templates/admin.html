@@ -31,6 +31,38 @@
         {% endif %}
     {% endwith %}
 
+    <!-- All Pending Contributions Section -->
+    <div class="card">
+        <h3>Pending Member Contributions</h3>
+        {% if pending_contribs %}
+        <table>
+            <tr>
+                <th>Member</th>
+                <th>Type</th>
+                <th>Amount (KES)</th>
+                <th>Action</th>
+            </tr>
+            {% for c in pending_contribs %}
+            <tr>
+                <td>{{ c.user.username }}</td>
+                <td>{{ c.type.capitalize() }}</td>
+                <td>{{ c.amount }}</td>
+                <td>
+                    <form action="/admin/contribution/{{ c.id }}/Approve" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-approve">Approve</button>
+                    </form>
+                    <form action="/admin/contribution/{{ c.id }}/Decline" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-decline">Decline</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+            <p>No pending contributions.</p>
+        {% endif %}
+    </div>
+
     <!-- Pending Emergency Transfers Section -->
     <div class="card">
         <h3>Pending Emergency Transfers</h3>
@@ -60,36 +92,6 @@
         </table>
         {% else %}
             <p>No pending transfer requests.</p>
-        {% endif %}
-    </div>
-
-    <!-- Pending Monthly Contributions Section -->
-    <div class="card">
-        <h3>Pending Monthly Contributions</h3>
-        {% if pending_monthly %}
-        <table>
-            <tr>
-                <th>Member</th>
-                <th>Amount (KES)</th>
-                <th>Action</th>
-            </tr>
-            {% for c in pending_monthly %}
-            <tr>
-                <td>{{ c.user.username }}</td>
-                <td>{{ c.amount }}</td>
-                <td>
-                    <form action="/admin/contribution/{{ c.id }}/Approve" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-approve">Approve</button>
-                    </form>
-                    <form action="/admin/contribution/{{ c.id }}/Decline" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-decline">Decline</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-            <p>No pending monthly contributions.</p>
         {% endif %}
     </div>
 
@@ -123,7 +125,7 @@
         {% endif %}
     </div>
 
-    <!-- Registered Members & Admin Controls Section -->
+    <!-- Registered Members Section -->
     <div class="card">
         <h3>Registered Members</h3>
         <table>

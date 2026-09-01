@@ -37,7 +37,7 @@ class Contribution(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     type = db.Column(db.String(20), nullable=False)  # weekly, monthly, meeting
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='Approved')
+    status = db.Column(db.String(20), default='Pending')  # All payments default to Pending
     user = db.relationship('User', backref='contributions')
 
 class Loan(db.Model):
@@ -56,9 +56,8 @@ class EmergencyTransfer(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id])
     receiver = db.relationship('User', foreign_keys=[receiver_id])
 
-# Initialize DB schema safely
+# Initialize DB
 with app.app_context():
-    db.drop_all()
     db.create_all()
     if not User.query.filter_by(username='admin').first():
         admin = User(username='admin', is_admin=True)
@@ -139,10 +138,10 @@ def admin_dashboard():
         return redirect(url_for('login'))
 
     users = User.query.filter_by(is_admin=False).all()
-    pending_monthly = Contribution.query.filter_by(type='monthly', status='Pending').all()
+    pending_contribs = Contribution.query.filter_by(status='Pending').all()
     loans = Loan.query.filter_by(status='Pending').all()
     transfers = EmergencyTransfer.query.filter_by(status='Pending').all()
-    return render_template('admin.html', users=users, pending_monthly=pending_monthly, loans=loans, transfers=transfers)
+    return render_template('admin.html', users=users, pending_contribs=pending_contribs, loans=loans, transfers=transfers)
 
 @app.route('/upload_profile_pic', methods=['POST'])
 def upload_profile_pic():
@@ -170,45 +169,37 @@ def contribute():
         return redirect(url_for('user_dashboard'))
 
     user = User.query.get(session['user_id'])
-    if not user:
-        return redirect(url_for('login'))
+    if not user: return redirect(url_for('login'))
 
-    if ctype == 'weekly':
-        user.weekly_balance += amount
-        if amount > 50.0:
-            user.emergency_balance += (amount - 50.0)
-        db.session.add(Contribution(user_id=user.id, type='weekly', amount=amount, status='Approved'))
-        flash('Weekly contribution recorded!')
-    
-    elif ctype == 'monthly':
-        db.session.add(Contribution(user_id=user.id, type='monthly', amount=amount, status='Pending'))
-        flash('Monthly payment submitted to Admin for approval.')
-
-    elif ctype == 'meeting':
-        amount = 100.0
-        user.meeting_balance += amount
-        db.session.add(Contribution(user_id=user.id, type='meeting', amount=amount, status='Approved'))
-        flash('100 KES Meeting contribution recorded!')
-
+    # All contribution types saved as 'Pending' - No balance updated until admin approves
+    db.session.add(Contribution(user_id=user.id, type=ctype, amount=amount, status='Pending'))
     db.session.commit()
+    flash(f'{ctype.capitalize()} payment submitted to Admin for approval.')
     return redirect(url_for('user_dashboard'))
 
 @app.route('/admin/contribution/<int:contrib_id>/<action>', methods=['POST'])
 def handle_contribution(contrib_id, action):
     if not session.get('is_admin'): return redirect(url_for('login'))
     contrib = Contribution.query.get(contrib_id)
-    if contrib:
+    if contrib and contrib.status == 'Pending':
         if action == 'Approve':
             contrib.status = 'Approved'
             user = User.query.get(contrib.user_id)
             if user:
-                user.monthly_balance += contrib.amount
-                if contrib.amount > 200.0:
-                    user.emergency_balance += (contrib.amount - 200.0)
-            flash('Monthly contribution approved!')
+                if contrib.type == 'weekly':
+                    user.weekly_balance += contrib.amount
+                    if contrib.amount > 50.0:
+                        user.emergency_balance += (contrib.amount - 50.0)
+                elif contrib.type == 'monthly':
+                    user.monthly_balance += contrib.amount
+                    if contrib.amount > 200.0:
+                        user.emergency_balance += (contrib.amount - 200.0)
+                elif contrib.type == 'meeting':
+                    user.meeting_balance += contrib.amount
+            flash('Contribution approved and added to user balance!')
         else:
             contrib.status = 'Declined'
-            flash('Monthly contribution declined.')
+            flash('Contribution declined.')
         db.session.commit()
     return redirect(url_for('admin_dashboard'))
 
@@ -325,4 +316,3 @@ def reset_password_otp():
 
 if __name__ == '__main__':
     app.run(debug=True)
-    
