@@ -207,7 +207,12 @@ def transfer_emergency():
         flash('Please select a recipient and enter an amount.')
         return redirect(url_for('dashboard'))
         
-    transfer_amt = float(amount)
+    try:
+        transfer_amt = float(amount)
+    except ValueError:
+        flash('Invalid transfer amount.')
+        return redirect(url_for('dashboard'))
+
     recipient = User.query.get(recipient_id)
     
     if not recipient:
