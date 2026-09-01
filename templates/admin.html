@@ -4,27 +4,37 @@
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; color: #333; }
-        .card { background: #ffffff; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .flash { color: green; font-weight: bold; margin-bottom: 10px; }
+        body { font-family: Arial, sans-serif; background: #121212; color: #fff; padding: 20px; }
+        .card { background: #1e1e1e; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        .btn-approve { background: #28a745; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; }
-        .btn-decline { background: #dc3545; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #2a2a2a; }
+        a { color: #4da6ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .btn { padding: 5px 10px; background: #007bff; color: white; border-radius: 4px; display: inline-block; margin-right: 5px; }
+        .btn-danger { background: #dc3545; }
+        .btn-success { background: #28a745; }
+        .btn-warning { background: #ffc107; color: black; }
+        .flash { background: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #007bff; }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>Admin Dashboard</h2>
-        <a href="/logout" style="color: #007bff;">Logout</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
     </div>
 
     {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
-        {% endif %}
+      {% if messages %}
+        <div class="flash">
+          {% for message in messages %}
+            <p style="margin: 0;">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
     {% endwith %}
 
+    <!-- Pending Contributions -->
     <div class="card">
         <h3>Pending Contributions Approvals</h3>
         <table>
@@ -37,11 +47,11 @@
             {% for c in pending %}
             <tr>
                 <td>{{ c.user.username }}</td>
-                <td>{{ c.type.capitalize() }}</td>
+                <td>{{ c.type }}</td>
                 <td>{{ c.amount }} KES</td>
                 <td>
-                    <a href="/admin/approve/{{ c.id }}" class="btn-approve">Approve</a>
-                    <a href="/admin/decline/{{ c.id }}" class="btn-decline">Decline</a>
+                    <a href="{{ url_for('approve_contribution', contrib_id=c.id) }}" class="btn btn-success">Approve</a>
+                    <a href="{{ url_for('decline_contribution', contrib_id=c.id) }}" class="btn btn-danger">Decline</a>
                 </td>
             </tr>
             {% else %}
@@ -50,28 +60,86 @@
         </table>
     </div>
 
+    <!-- Pending Loans -->
+    <div class="card">
+        <h3>Pending Loan Requests</h3>
+        <table>
+            <tr>
+                <th>Member</th>
+                <th>Amount</th>
+                <th>Action</th>
+            </tr>
+            {% for l in pending_loans %}
+            <tr>
+                <td>{{ l.user.username }}</td>
+                <td>{{ l.amount }} KES</td>
+                <td>
+                    <a href="{{ url_for('approve_loan', loan_id=l.id) }}" class="btn btn-success">Approve</a>
+                    <a href="{{ url_for('decline_loan', loan_id=l.id) }}" class="btn btn-danger">Decline</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">No pending loans.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <!-- Pending Emergency Transfers -->
+    <div class="card">
+        <h3>Pending Emergency Fund Transfers</h3>
+        <table>
+            <tr>
+                <th>Sender</th>
+                <th>Recipient</th>
+                <th>Amount</th>
+                <th>Action</th>
+            </tr>
+            {% for t in pending_transfers %}
+            <tr>
+                <td>{{ t.sender.username }}</td>
+                <td>{{ t.recipient.username }}</td>
+                <td>{{ t.amount }} KES</td>
+                <td>
+                    <a href="{{ url_for('approve_transfer', transfer_id=t.id) }}" class="btn btn-success">Approve</a>
+                    <a href="{{ url_for('decline_transfer', transfer_id=t.id) }}" class="btn btn-danger">Decline</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">No pending emergency transfers.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <!-- All Members -->
     <div class="card">
         <h3>All SACCO Members</h3>
         <table>
             <tr>
+                <th>Profile Pic</th>
                 <th>ID</th>
                 <th>Username</th>
-                <th>Role</th>
                 <th>Weekly</th>
                 <th>Monthly</th>
                 <th>Meeting</th>
                 <th>Emergency</th>
+                <th>Actions</th>
             </tr>
             {% for m in members %}
             <tr>
+                <td><img src="{{ url_for('static', filename='uploads/' + m.profile_pic) }}" width="40" height="40" style="border-radius: 50%; object-fit: cover;"></td>
                 <td>{{ m.id }}</td>
                 <td>{{ m.username }}</td>
-                <td>{{ 'Admin' if m.is_admin else 'Member' }}</td>
                 <td>{{ m.weekly_balance }} KES</td>
                 <td>{{ m.monthly_balance }} KES</td>
                 <td>{{ m.meeting_balance }} KES</td>
                 <td>{{ m.emergency_balance }} KES</td>
+                <td>
+                    <a href="{{ url_for('issue_otp', user_id=m.id) }}" class="btn btn-warning">Issue OTP</a>
+                    <a href="{{ url_for('delete_user', user_id=m.id) }}" class="btn btn-danger" onclick="return confirm('Remove this member?');">Remove</a>
+                </td>
             </tr>
+            {% else %}
+            <tr><td colspan="8">No members registered.</td></tr>
             {% endfor %}
         </table>
     </div>
