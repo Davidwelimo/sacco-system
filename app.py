@@ -136,7 +136,8 @@ def dashboard():
         return redirect(url_for('admin_dashboard'))
     contributions = Contribution.query.filter_by(user_id=user.id).all()
     loans = Loan.query.filter_by(user_id=user.id).all()
-    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans)
+    members = User.query.filter(User.id != user.id).all()
+    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, members=members)
 
 @app.route('/upload_profile_pic', methods=['POST'])
 @login_required
@@ -188,18 +189,28 @@ def request_loan():
 @login_required
 def transfer_emergency():
     user = User.query.get(session['user_id'])
+    recipient_id = request.form.get('recipient_id')
     amount = request.form.get('amount')
-    if amount:
-        transfer_amt = float(amount)
-        if user.emergency_balance >= transfer_amt:
-            user.emergency_balance -= transfer_amt
-            user.weekly_balance += transfer_amt # or designated primary wallet balance
-            db.session.commit()
-            flash('Emergency funds transferred successfully.')
-        else:
-            flash('Insufficient emergency fund balance.')
+    
+    if not recipient_id or not amount:
+        flash('Please select a recipient and enter an amount.')
+        return redirect(url_for('dashboard'))
+        
+    transfer_amt = float(amount)
+    recipient = User.query.get(recipient_id)
+    
+    if not recipient:
+        flash('Recipient not found.')
+        return redirect(url_for('dashboard'))
+        
+    if user.emergency_balance >= transfer_amt:
+        user.emergency_balance -= transfer_amt
+        recipient.emergency_balance += transfer_amt
+        db.session.commit()
+        flash(f'Successfully transferred {transfer_amt} KES emergency funds to {recipient.username}.')
     else:
-        flash('Invalid transfer amount.')
+        flash('Insufficient emergency fund balance.')
+        
     return redirect(url_for('dashboard'))
 
 @app.route('/admin_dashboard')
