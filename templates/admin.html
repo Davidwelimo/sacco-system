@@ -8,14 +8,13 @@
         body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --border: #444444; }
         body { font-family: Arial, sans-serif; margin: 20px; background: var(--bg); color: var(--text); }
         .card { background: var(--card); padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+        .flash { color: green; font-weight: bold; margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
-        th { background: rgba(0,0,0,0.05); }
-        button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; }
-        .btn-green { background: #28a745; }
-        .btn-red { background: #dc3545; }
-        .btn-blue { background: #007bff; }
-        .flash { color: #007bff; font-weight: bold; margin-bottom: 10px; }
+        th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+        button { padding: 6px 12px; margin: 2px; border-radius: 4px; border: none; cursor: pointer; }
+        .btn-approve { background: #28a745; color: white; }
+        .btn-decline { background: #dc3545; color: white; }
+        .btn-action { background: #007bff; color: white; }
         .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; }
     </style>
 </head>
@@ -23,7 +22,7 @@
     <button type="button" class="toggle-btn" onclick="toggleTheme()">🌓 Mode</button>
     <div class="card" style="clear:both;">
         <h2>Admin Dashboard</h2>
-        <a href="/logout" style="color:#007bff;">Logout</a>
+        <a href="/logout" style="color: #007bff;">Logout</a>
     </div>
 
     {% with messages = get_flashed_messages() %}
@@ -32,99 +31,123 @@
         {% endif %}
     {% endwith %}
 
-    <div class="card">
-        <h3>Registered Members & Balances</h3>
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>Weekly</th>
-                <th>Monthly</th>
-                <th>Meeting</th>
-                <th>Emergency</th>
-                <th>OTP Action</th>
-                <th>Remove</th>
-            </tr>
-            {% for u in users %}
-            <tr>
-                <td>{{ u.id }}</td>
-                <td>{{ u.username }}</td>
-                <td>{{ u.weekly_balance }} KES</td>
-                <td>{{ u.monthly_balance }} KES</td>
-                <td>{{ u.meeting_balance }} KES</td>
-                <td>{{ u.emergency_balance }} KES</td>
-                <td>
-                    <form action="/admin/generate_otp/{{ u.id }}" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-blue">Generate OTP</button>
-                    </form>
-                </td>
-                <td>
-                    <form action="/admin/delete_user/{{ u.id }}" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-red" onclick="return confirm('Remove user?');">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-
-    <div class="card">
-        <h3>Pending Monthly Contribution Approvals</h3>
-        <table>
-            <tr><th>Member</th><th>Amount</th><th>Actions</th></tr>
-            {% for pm in pending_monthly %}
-            <tr>
-                <td>{{ pm.user.username }}</td>
-                <td>{{ pm.amount }} KES</td>
-                <td>
-                    <form action="/admin/contribution/{{ pm.id }}/Approve" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-green">Approve</button>
-                    </form>
-                    <form action="/admin/contribution/{{ pm.id }}/Decline" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-red">Decline</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-
-    <div class="card">
-        <h3>Pending Loan Requests</h3>
-        <table>
-            <tr><th>Borrower</th><th>Amount</th><th>Actions</th></tr>
-            {% for l in loans %}
-            <tr>
-                <td>{{ l.user.username }}</td>
-                <td>{{ l.amount }} KES</td>
-                <td>
-                    <form action="/admin/loan/{{ l.id }}/Approve" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-green">Approve</button>
-                    </form>
-                    <form action="/admin/loan/{{ l.id }}/Decline" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-red">Decline</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-
+    <!-- Pending Emergency Transfers Section -->
     <div class="card">
         <h3>Pending Emergency Transfers</h3>
+        {% if transfers %}
         <table>
-            <tr><th>From</th><th>To</th><th>Amount</th><th>Actions</th></tr>
+            <tr>
+                <th>Sender</th>
+                <th>Receiver</th>
+                <th>Amount (KES)</th>
+                <th>Action</th>
+            </tr>
             {% for t in transfers %}
             <tr>
                 <td>{{ t.sender.username }}</td>
                 <td>{{ t.receiver.username }}</td>
-                <td>{{ t.amount }} KES</td>
+                <td>{{ t.amount }}</td>
                 <td>
                     <form action="/admin/transfer/{{ t.id }}/Approve" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-green">Approve</button>
+                        <button type="submit" class="btn-approve">Approve</button>
                     </form>
                     <form action="/admin/transfer/{{ t.id }}/Decline" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-red">Decline</button>
+                        <button type="submit" class="btn-decline">Decline</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+            <p>No pending transfer requests.</p>
+        {% endif %}
+    </div>
+
+    <!-- Pending Monthly Contributions Section -->
+    <div class="card">
+        <h3>Pending Monthly Contributions</h3>
+        {% if pending_monthly %}
+        <table>
+            <tr>
+                <th>Member</th>
+                <th>Amount (KES)</th>
+                <th>Action</th>
+            </tr>
+            {% for c in pending_monthly %}
+            <tr>
+                <td>{{ c.user.username }}</td>
+                <td>{{ c.amount }}</td>
+                <td>
+                    <form action="/admin/contribution/{{ c.id }}/Approve" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-approve">Approve</button>
+                    </form>
+                    <form action="/admin/contribution/{{ c.id }}/Decline" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-decline">Decline</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+            <p>No pending monthly contributions.</p>
+        {% endif %}
+    </div>
+
+    <!-- Pending Loan Applications Section -->
+    <div class="card">
+        <h3>Pending Loan Applications</h3>
+        {% if loans %}
+        <table>
+            <tr>
+                <th>Member</th>
+                <th>Amount (KES)</th>
+                <th>Action</th>
+            </tr>
+            {% for l in loans %}
+            <tr>
+                <td>{{ l.user.username }}</td>
+                <td>{{ l.amount }}</td>
+                <td>
+                    <form action="/admin/loan/{{ l.id }}/Approve" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-approve">Approve</button>
+                    </form>
+                    <form action="/admin/loan/{{ l.id }}/Decline" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-decline">Decline</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+            <p>No pending loan applications.</p>
+        {% endif %}
+    </div>
+
+    <!-- Registered Members & Admin Controls Section -->
+    <div class="card">
+        <h3>Registered Members</h3>
+        <table>
+            <tr>
+                <th>Username</th>
+                <th>Weekly Bal</th>
+                <th>Monthly Bal</th>
+                <th>Meeting Bal</th>
+                <th>Emergency Bal</th>
+                <th>Actions</th>
+            </tr>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.username }}</td>
+                <td>{{ u.weekly_balance }}</td>
+                <td>{{ u.monthly_balance }}</td>
+                <td>{{ u.meeting_balance }}</td>
+                <td>{{ u.emergency_balance }}</td>
+                <td>
+                    <form action="/admin/generate_otp/{{ u.id }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-action">Generate OTP</button>
+                    </form>
+                    <form action="/admin/delete_user/{{ u.id }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete user?');">
+                        <button type="submit" class="btn-decline">Delete</button>
                     </form>
                 </td>
             </tr>
