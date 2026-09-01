@@ -48,7 +48,13 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
 
-# --- AUTHENTICATION ROUTES ---
+# --- ROOT & AUTHENTICATION ROUTES ---
+
+@app.route('/')
+def home():
+    if current_user.is_authenticated:
+        return redirect(url_for('admin_dashboard' if current_user.is_admin else 'dashboard'))
+    return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
