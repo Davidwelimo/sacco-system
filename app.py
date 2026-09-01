@@ -13,7 +13,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db = SQLAlchemy(app)
 
-# Models
+# Database Models
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -35,9 +35,9 @@ class User(db.Model):
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    type = db.Column(db.String(20), nullable=False) # weekly, monthly, meeting
+    type = db.Column(db.String(20), nullable=False)  # weekly, monthly, meeting
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='Approved') # Weekly/Meeting auto-approved, Monthly needs admin approval
+    status = db.Column(db.String(20), default='Approved')  # Weekly/Meeting auto-approved, Monthly needs admin approval
     user = db.relationship('User', backref='contributions')
 
 class Loan(db.Model):
@@ -56,8 +56,9 @@ class EmergencyTransfer(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id])
     receiver = db.relationship('User', foreign_keys=[receiver_id])
 
-# Initialize DB & Admin
+# Force drop tables to recreate missing columns on Render and avoid 500 errors
 with app.app_context():
+    db.drop_all()
     db.create_all()
     if not User.query.filter_by(username='admin').first():
         admin = User(username='admin', is_admin=True)
@@ -65,6 +66,7 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
 
+# Routes
 @app.route('/')
 def home():
     if 'user_id' in session:
@@ -145,7 +147,13 @@ def upload_profile_pic():
 def contribute():
     if 'user_id' not in session: return redirect(url_for('login'))
     ctype = request.form.get('type')
-    amount = float(request.form.get('amount', 0))
+    amount_raw = request.form.get('amount', '0')
+    try:
+        amount = float(amount_raw) if ctype != 'meeting' else 100.0
+    except ValueError:
+        flash('Invalid amount entered.')
+        return redirect(url_for('user_dashboard'))
+
     user = User.query.get(session['user_id'])
 
     if ctype == 'weekly':
@@ -160,7 +168,7 @@ def contribute():
         flash('Monthly payment submitted to Admin for approval.')
 
     elif ctype == 'meeting':
-        amount = 100.0  # Fixed 100 KES meeting contribution
+        amount = 100.0
         user.meeting_balance += amount
         db.session.add(Contribution(user_id=user.id, type='meeting', amount=amount, status='Approved'))
         flash('100 KES Meeting contribution recorded!')
@@ -188,7 +196,12 @@ def handle_contribution(contrib_id, action):
 @app.route('/request_loan', methods=['POST'])
 def request_loan():
     if 'user_id' not in session: return redirect(url_for('login'))
-    amount = float(request.form.get('amount', 0))
+    try:
+        amount = float(request.form.get('amount', 0))
+    except ValueError:
+        flash('Invalid amount.')
+        return redirect(url_for('user_dashboard'))
+    
     if amount > 0:
         db.session.add(Loan(user_id=session['user_id'], amount=amount))
         db.session.commit()
@@ -198,10 +211,23 @@ def request_loan():
 @app.route('/transfer_emergency', methods=['POST'])
 def transfer_emergency():
     if 'user_id' not in session: return redirect(url_for('login'))
-    receiver_id = int(request.form.get('receiver_id'))
-    amount = float(request.form.get('amount', 0))
+    
+    receiver_id_raw = request.form.get('receiver_id')
+    amount_raw = request.form.get('amount')
+
+    if not receiver_id_raw or not amount_raw:
+        flash('Please select a receiver and enter an amount.')
+        return redirect(url_for('user_dashboard'))
+
+    try:
+        receiver_id = int(receiver_id_raw)
+        amount = float(amount_raw)
+    except ValueError:
+        flash('Invalid transfer details.')
+        return redirect(url_for('user_dashboard'))
+
     user = User.query.get(session['user_id'])
-    if amount <= user.emergency_balance:
+    if amount <= user.emergency_balance and amount > 0:
         db.session.add(EmergencyTransfer(sender_id=user.id, receiver_id=receiver_id, amount=amount))
         db.session.commit()
         flash('Transfer request sent to admin for approval.')
@@ -269,7 +295,7 @@ def reset_password_otp():
             user.set_password(new_password)
             user.otp = None
             db.session.commit()
-            flash('Password reset successfully!')
+            flash('Password reset successfully! Log in with your new password.')
             return redirect(url_for('login'))
         flash('Invalid username or OTP.')
     return render_template('reset_otp.html')

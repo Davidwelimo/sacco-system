@@ -91,7 +91,8 @@
     <div class="card">
         <h3>Transfer Emergency Fund to Friend</h3>
         <form action="/transfer_emergency" method="POST">
-            <select name="receiver_id">
+            <select name="receiver_id" required>
+                <option value="" disabled selected>Select Friend</option>
                 {% for m in members %}
                     {% if m.id != user.id %}
                         <option value="{{ m.id }}">{{ m.username }}</option>
