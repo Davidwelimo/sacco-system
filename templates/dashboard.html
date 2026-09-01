@@ -4,125 +4,143 @@
     <meta charset="UTF-8">
     <title>Member Dashboard</title>
     <style>
-        :root { --bg: #f4f6f9; --card: #ffffff; --text: #333333; --border: #cccccc; }
-        body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --border: #444444; }
-        body { font-family: Arial, sans-serif; margin: 20px; background: var(--bg); color: var(--text); }
-        .card { background: var(--card); padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid var(--border); }
-        .profile-pic { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #007bff; }
-        .flash { color: green; font-weight: bold; margin-bottom: 10px; }
-        form { margin-top: 10px; }
-        input, select, button { padding: 8px; margin: 5px 0; background: var(--card); color: var(--text); border: 1px solid var(--border); }
-        button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; }
+        body { font-family: Arial, sans-serif; background: #121212; color: #fff; padding: 20px; }
+        .card { background: #1e1e1e; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #2a2a2a; }
+        a { color: #4da6ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .btn { padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; display: inline-block; }
+        .btn:hover { background: #0056b3; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #a71d2a; }
+        .flash { background: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #007bff; }
+        input, select { padding: 8px; margin-right: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <button type="button" class="toggle-btn" onclick="toggleTheme()">🌓 Mode</button>
-    <div class="card" style="clear:both;">
+    <div class="card">
         <h2>Welcome, {{ user.username }}</h2>
-        <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" class="profile-pic" alt="Profile Picture" onerror="this.src='https://via.placeholder.com/100';">
-        <form action="/upload_profile_pic" method="POST" enctype="multipart/form-data">
+        <div style="margin-bottom: 15px;">
+            <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" width="80" height="80" style="border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
+        </div>
+        <form action="{{ url_for('upload_profile_pic') }}" method="POST" enctype="multipart/form-data" style="margin-bottom: 15px;">
             <input type="file" name="profile_pic" required>
-            <button type="submit">Update Picture</button>
+            <button type="submit" class="btn">Update Picture</button>
         </form>
-        
-        <h4>Your Savings Balances:</h4>
+        <h3>Your Savings Balances:</h3>
         <ul>
-            <li><strong>Weekly Savings:</strong> {{ user.weekly_balance }} KES</li>
-            <li><strong>Monthly Savings:</strong> {{ user.monthly_balance }} KES</li>
-            <li><strong>Meeting Savings:</strong> {{ user.meeting_balance }} KES</li>
-            <li><strong>Emergency Fund:</strong> {{ user.emergency_balance }} KES</li>
+            <li>Weekly Savings: <strong>{{ user.weekly_balance }} KES</strong></li>
+            <li>Monthly Savings: <strong>{{ user.monthly_balance }} KES</strong></li>
+            <li>Meeting Savings: <strong>{{ user.meeting_balance }} KES</strong></li>
+            <li>Emergency Fund: <strong>{{ user.emergency_balance }} KES</strong></li>
         </ul>
-        <a href="/logout" style="color: #007bff;">Logout</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
     </div>
 
     {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
-        {% endif %}
+      {% if messages %}
+        <div class="flash">
+          {% for message in messages %}
+            <p style="margin: 0;">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
     {% endwith %}
 
+    <!-- Make Contribution -->
     <div class="card">
         <h3>Make Contribution</h3>
-        <form action="/contribute" method="POST">
-            <label>Contribution Type:</label><br>
-            <select name="type" id="contribType" onchange="toggleAmountInput()">
-                <option value="weekly">Weekly (Target: 50 KES)</option>
-                <option value="monthly">Monthly (Target: 200 KES)</option>
-                <option value="meeting">Meeting Contribution (Fixed 100 KES)</option>
-            </select><br>
-            
-            <div id="amountDiv">
-                <input type="number" step="0.01" name="amount" id="amountInput" placeholder="Amount (KES)" required>
-            </div>
-            
-            <button type="submit">Pay Contribution</button>
+        <form action="{{ url_for('contribute') }}" method="POST">
+            <label>Contribution Type:</label>
+            <select name="type" required>
+                <option value="weekly">Weekly (50 KES)</option>
+                <option value="monthly">Monthly (200 KES)</option>
+                <option value="meeting">Meeting (100 KES)</option>
+            </select>
+            <label>Amount (KES):</label>
+            <input type="number" step="0.01" name="amount" placeholder="Amount">
+            <button type="submit" class="btn">Pay Contribution</button>
         </form>
     </div>
 
+    <!-- Contribution Statuses -->
     <div class="card">
         <h3>Your Contribution Statuses</h3>
         <table>
-            <tr><th>Type</th><th>Amount</th><th>Status</th></tr>
+            <tr>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
             {% for c in contributions %}
             <tr>
-                <td>{{ c.type.capitalize() }}</td>
+                <td>{{ c.type | capitalize }}</td>
                 <td>{{ c.amount }} KES</td>
-                <td>
-                    {% if c.status == 'Approved' %}<span style="color:green;">Approved</span>
-                    {% elif c.status == 'Pending' %}<span style="color:orange;">Pending Admin Approval</span>
-                    {% else %}<span style="color:red;">Declined</span>{% endif %}
-                </td>
+                <td style="color: {% if c.status == 'Approved' %}#28a745{% elif c.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ c.status }}</td>
             </tr>
+            {% else %}
+            <tr><td colspan="3">No contributions made yet.</td></tr>
             {% endfor %}
         </table>
     </div>
 
+    <!-- Request Loan -->
     <div class="card">
         <h3>Request Loan</h3>
-        <form action="/request_loan" method="POST">
-            <input type="number" step="0.01" name="amount" placeholder="Loan Amount" required>
-            <button type="submit">Apply for Loan</button>
+        <form action="{{ url_for('request_loan') }}" method="POST">
+            <label>Loan Amount:</label>
+            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
+            <button type="submit" class="btn">Apply for Loan</button>
         </form>
+        <h4 style="margin-top: 15px;">Your Loan Requests</h4>
+        <table>
+            <tr>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+            {% for l in loans %}
+            <tr>
+                <td>{{ l.amount }} KES</td>
+                <td style="color: {% if l.status == 'Approved' %}#28a745{% elif l.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ l.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="2">No loan requests made yet.</td></tr>
+            {% endfor %}
+        </table>
     </div>
 
+    <!-- Transfer Emergency Fund -->
     <div class="card">
         <h3>Transfer Emergency Fund to Friend</h3>
-        <form action="/transfer_emergency" method="POST">
-            <select name="receiver_id" required>
-                <option value="" disabled selected>Select Friend</option>
+        <form action="{{ url_for('transfer_emergency') }}" method="POST">
+            <select name="recipient_id" required>
+                <option value="">Select Friend</option>
                 {% for m in members %}
-                    {% if m.id != user.id %}
-                        <option value="{{ m.id }}">{{ m.username }}</option>
-                    {% endif %}
+                <option value="{{ m.id }}">{{ m.username }}</option>
                 {% endfor %}
             </select>
             <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-            <button type="submit">Request Transfer</button>
+            <button type="submit" class="btn">Request Transfer</button>
         </form>
+        <h4 style="margin-top: 15px;">Your Emergency Transfer Requests</h4>
+        <table>
+            <tr>
+                <th>Recipient</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+            {% for t in transfers %}
+            <tr>
+                <td>{{ t.recipient.username }}</td>
+                <td>{{ t.amount }} KES</td>
+                <td style="color: {% if t.status == 'Approved' %}#28a745{% elif t.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ t.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">No emergency transfers made yet.</td></tr>
+            {% endfor %}
+        </table>
     </div>
-
-    <script>
-        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-        }
-
-        function toggleAmountInput() {
-            const type = document.getElementById('contribType').value;
-            const amountDiv = document.getElementById('amountDiv');
-            const amountInput = document.getElementById('amountInput');
-            if (type === 'meeting') {
-                amountDiv.style.display = 'none';
-                amountInput.removeAttribute('required');
-            } else {
-                amountDiv.style.display = 'block';
-                amountInput.setAttribute('required', 'required');
-            }
-        }
-    </script>
 </body>
 </html>
