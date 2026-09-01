@@ -2,133 +2,159 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - SACCO System</title>
     <style>
-        :root { --bg: #f4f6f9; --card: #ffffff; --text: #333333; --border: #cccccc; }
-        body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --border: #444444; }
-        body { font-family: Arial, sans-serif; margin: 20px; background: var(--bg); color: var(--text); }
-        .card { background: var(--card); padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid var(--border); }
-        .flash { color: green; font-weight: bold; margin-bottom: 10px; }
+        * { box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { margin: 20px; background-color: #f4f6f9; color: #333; }
+        header { display: flex; justify-content: space-between; align-items: center; background: #003366; color: white; padding: 15px 20px; border-radius: 5px; }
+        header a { color: #ffcc00; text-decoration: none; font-weight: bold; }
+        .flash { padding: 10px; margin: 15px 0; background: #e0f2fe; border: 1px solid #0284c7; color: #0369a1; border-radius: 4px; }
+        section { background: white; padding: 20px; margin-top: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: #003366; border-bottom: 2px solid #003366; padding-bottom: 5px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
-        button { padding: 6px 12px; margin: 2px; border-radius: 4px; border: none; cursor: pointer; }
-        .btn-approve { background: #28a745; color: white; }
-        .btn-decline { background: #dc3545; color: white; }
-        .btn-action { background: #007bff; color: white; }
-        .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f0f4f8; }
+        .btn { padding: 6px 12px; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        .btn-approve { background: #22c55e; color: white; }
+        .btn-reject { background: #ef4444; color: white; }
+        .btn-delete { background: #dc2626; color: white; }
+        .btn-otp { background: #0284c7; color: white; }
+        form { display: inline; }
     </style>
 </head>
 <body>
-    <button type="button" class="toggle-btn" onclick="toggleTheme()">🌓 Mode</button>
-    <div class="card" style="clear:both;">
-        <h2>Admin Dashboard</h2>
-        <a href="/logout" style="color: #007bff;">Logout</a>
+
+<header>
+    <h1>SACCO Admin Dashboard</h1>
+    <div>
+        <span>Welcome, {{ session.username }}</span> | 
+        <a href="{{ url_for('logout') }}">Logout</a>
     </div>
+</header>
 
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
-        {% endif %}
-    {% endwith %}
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="flash">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
-    <!-- All Pending Contributions Section -->
-    <div class="card">
-        <h3>Pending Member Contributions</h3>
-        {% if pending_contribs %}
-        <table>
-            <tr>
-                <th>Member</th>
-                <th>Type</th>
-                <th>Amount (KES)</th>
-                <th>Action</th>
-            </tr>
-            {% for c in pending_contribs %}
-            <tr>
-                <td>{{ c.user.username }}</td>
-                <td>{{ c.type.capitalize() }}</td>
-                <td>{{ c.amount }}</td>
-                <td>
-                    <form action="/admin/contribution/{{ c.id }}/Approve" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-approve">Approve</button>
-                    </form>
-                    <form action="/admin/contribution/{{ c.id }}/Decline" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-decline">Decline</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-            <p>No pending contributions.</p>
-        {% endif %}
-    </div>
-
-    <!-- Pending Emergency Transfers Section -->
-    <div class="card">
-        <h3>Pending Emergency Transfers</h3>
-        {% if transfers %}
-        <table>
+<!-- Pending Emergency Money Transfers -->
+<section>
+    <h2>Pending Emergency Transfers</h2>
+    {% if transfers %}
+    <table>
+        <thead>
             <tr>
                 <th>Sender</th>
                 <th>Receiver</th>
-                <th>Amount (KES)</th>
-                <th>Action</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
             </tr>
+        </thead>
+        <tbody>
             {% for t in transfers %}
             <tr>
                 <td>{{ t.sender.username }}</td>
                 <td>{{ t.receiver.username }}</td>
-                <td>{{ t.amount }}</td>
+                <td>KES {{ "%.2f"|format(t.amount) }}</td>
+                <td><strong>{{ t.status }}</strong></td>
                 <td>
-                    <form action="/admin/transfer/{{ t.id }}/Approve" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-approve">Approve</button>
+                    <form action="{{ url_for('handle_transfer', transfer_id=t.id, action='Approve') }}" method="POST">
+                        <button type="submit" class="btn btn-approve">Approve</button>
                     </form>
-                    <form action="/admin/transfer/{{ t.id }}/Decline" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-decline">Decline</button>
+                    <form action="{{ url_for('handle_transfer', transfer_id=t.id, action='Reject') }}" method="POST">
+                        <button type="submit" class="btn btn-reject">Reject</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-        </table>
-        {% else %}
-            <p>No pending transfer requests.</p>
-        {% endif %}
-    </div>
+        </tbody>
+    </table>
+    {% else %}
+    <p>No pending transfer requests.</p>
+    {% endif %}
+</section>
 
-    <!-- Pending Loan Applications Section -->
-    <div class="card">
-        <h3>Pending Loan Applications</h3>
-        {% if loans %}
-        <table>
+<!-- Pending Contributions -->
+<section>
+    <h2>Pending Contributions</h2>
+    {% if pending_contribs %}
+    <table>
+        <thead>
             <tr>
                 <th>Member</th>
-                <th>Amount (KES)</th>
-                <th>Action</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Actions</th>
             </tr>
+        </thead>
+        <tbody>
+            {% for c in pending_contribs %}
+            <tr>
+                <td>{{ c.user.username }}</td>
+                <td>{{ c.type|capitalize }}</td>
+                <td>KES {{ "%.2f"|format(c.amount) }}</td>
+                <td>
+                    <form action="{{ url_for('handle_contribution', contrib_id=c.id, action='Approve') }}" method="POST">
+                        <button type="submit" class="btn btn-approve">Approve</button>
+                    </form>
+                    <form action="{{ url_for('handle_contribution', contrib_id=c.id, action='Decline') }}" method="POST">
+                        <button type="submit" class="btn btn-reject">Decline</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No pending contributions.</p>
+    {% endif %}
+</section>
+
+<!-- Pending Loans -->
+<section>
+    <h2>Pending Loan Applications</h2>
+    {% if loans %}
+    <table>
+        <thead>
+            <tr>
+                <th>Applicant</th>
+                <th>Requested Amount</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
             {% for l in loans %}
             <tr>
                 <td>{{ l.user.username }}</td>
-                <td>{{ l.amount }}</td>
+                <td>KES {{ "%.2f"|format(l.amount) }}</td>
                 <td>
-                    <form action="/admin/loan/{{ l.id }}/Approve" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-approve">Approve</button>
+                    <form action="{{ url_for('handle_loan', loan_id=l.id, action='Approve') }}" method="POST">
+                        <button type="submit" class="btn btn-approve">Approve</button>
                     </form>
-                    <form action="/admin/loan/{{ l.id }}/Decline" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-decline">Decline</button>
+                    <form action="{{ url_for('handle_loan', loan_id=l.id, action='Decline') }}" method="POST">
+                        <button type="submit" class="btn btn-reject">Decline</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-        </table>
-        {% else %}
-            <p>No pending loan applications.</p>
-        {% endif %}
-    </div>
+        </tbody>
+    </table>
+    {% else %}
+    <p>No pending loan applications.</p>
+    {% endif %}
+</section>
 
-    <!-- Registered Members Section -->
-    <div class="card">
-        <h3>Registered Members</h3>
-        <table>
+<!-- Registered Members Management -->
+<section>
+    <h2>All Members Overview</h2>
+    {% if users %}
+    <table>
+        <thead>
             <tr>
                 <th>Username</th>
                 <th>Weekly Bal</th>
@@ -137,32 +163,31 @@
                 <th>Emergency Bal</th>
                 <th>Actions</th>
             </tr>
+        </thead>
+        <tbody>
             {% for u in users %}
             <tr>
                 <td>{{ u.username }}</td>
-                <td>{{ u.weekly_balance }}</td>
-                <td>{{ u.monthly_balance }}</td>
-                <td>{{ u.meeting_balance }}</td>
-                <td>{{ u.emergency_balance }}</td>
+                <td>KES {{ "%.2f"|format(u.weekly_balance) }}</td>
+                <td>KES {{ "%.2f"|format(u.monthly_balance) }}</td>
+                <td>KES {{ "%.2f"|format(u.meeting_balance) }}</td>
+                <td>KES {{ "%.2f"|format(u.emergency_balance) }}</td>
                 <td>
-                    <form action="/admin/generate_otp/{{ u.id }}" method="POST" style="display:inline;">
-                        <button type="submit" class="btn-action">Generate OTP</button>
+                    <form action="{{ url_for('generate_otp', user_id=u.id) }}" method="POST">
+                        <button type="submit" class="btn btn-otp">Generate OTP</button>
                     </form>
-                    <form action="/admin/delete_user/{{ u.id }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete user?');">
-                        <button type="submit" class="btn-decline">Delete</button>
+                    <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST" onsubmit="return confirm('Delete this user?');">
+                        <button type="submit" class="btn btn-delete">Delete</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-        </table>
-    </div>
+        </tbody>
+    </table>
+    {% else %}
+    <p>No registered members found.</p>
+    {% endif %}
+</section>
 
-    <script>
-        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-        }
-    </script>
 </body>
 </html>
