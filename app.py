@@ -11,12 +11,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sacco.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 
-# Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db = SQLAlchemy(app)
 
-# Database Models
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -36,7 +34,6 @@ class Contribution(db.Model):
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
 
-# Authentication Decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -46,7 +43,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Routes
 @app.route('/')
 def home():
     return redirect(url_for('login'))
@@ -214,9 +210,14 @@ def decline_contribution(contrib_id):
         
     return redirect(url_for('admin_dashboard'))
 
-# Automatically create database tables when app boots up (compatible with Gunicorn/Render)
+# Automatically create tables and default admin account on startup
 with app.app_context():
     db.create_all()
+    if not User.query.filter_by(username='admin').first():
+        hashed_pw = generate_password_hash('admin123', method='scrypt')
+        default_admin = User(username='admin', password=hashed_pw, is_admin=True)
+        db.session.add(default_admin)
+        db.session.commit()
 
 if __name__ == '__main__':
     app.run(debug=True)
