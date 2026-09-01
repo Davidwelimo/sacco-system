@@ -33,13 +33,25 @@
     {% endwith %}
 
     <div class="card">
-        <h3>Manage Members & Generate OTPs</h3>
+        <h3>Registered Members & Balances</h3>
         <table>
-            <tr><th>ID</th><th>Username</th><th>Emergency Balance</th><th>OTP Action</th><th>Remove</th></tr>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Weekly</th>
+                <th>Monthly</th>
+                <th>Meeting</th>
+                <th>Emergency</th>
+                <th>OTP Action</th>
+                <th>Remove</th>
+            </tr>
             {% for u in users %}
             <tr>
                 <td>{{ u.id }}</td>
                 <td>{{ u.username }}</td>
+                <td>{{ u.weekly_balance }} KES</td>
+                <td>{{ u.monthly_balance }} KES</td>
+                <td>{{ u.meeting_balance }} KES</td>
                 <td>{{ u.emergency_balance }} KES</td>
                 <td>
                     <form action="/admin/generate_otp/{{ u.id }}" method="POST" style="display:inline;">
@@ -49,6 +61,27 @@
                 <td>
                     <form action="/admin/delete_user/{{ u.id }}" method="POST" style="display:inline;">
                         <button type="submit" class="btn-red" onclick="return confirm('Remove user?');">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Pending Monthly Contribution Approvals</h3>
+        <table>
+            <tr><th>Member</th><th>Amount</th><th>Actions</th></tr>
+            {% for pm in pending_monthly %}
+            <tr>
+                <td>{{ pm.user.username }}</td>
+                <td>{{ pm.amount }} KES</td>
+                <td>
+                    <form action="/admin/contribution/{{ pm.id }}/Approve" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-green">Approve</button>
+                    </form>
+                    <form action="/admin/contribution/{{ pm.id }}/Decline" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-red">Decline</button>
                     </form>
                 </td>
             </tr>

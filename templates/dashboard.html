@@ -14,6 +14,8 @@
         input, select, button { padding: 8px; margin: 5px 0; background: var(--card); color: var(--text); border: 1px solid var(--border); }
         button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
         .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
     </style>
 </head>
 <body>
@@ -25,7 +27,14 @@
             <input type="file" name="profile_pic" required>
             <button type="submit">Update Picture</button>
         </form>
-        <p><strong>Emergency Fund Balance:</strong> {{ user.emergency_balance }} KES</p>
+        
+        <h4>Your Savings Balances:</h4>
+        <ul>
+            <li><strong>Weekly Savings:</strong> {{ user.weekly_balance }} KES</li>
+            <li><strong>Monthly Savings:</strong> {{ user.monthly_balance }} KES</li>
+            <li><strong>Meeting Savings:</strong> {{ user.meeting_balance }} KES</li>
+            <li><strong>Emergency Fund:</strong> {{ user.emergency_balance }} KES</li>
+        </ul>
         <a href="/logout" style="color: #007bff;">Logout</a>
     </div>
 
@@ -37,15 +46,38 @@
 
     <div class="card">
         <h3>Make Contribution</h3>
-        <p><small>Weekly Target: 50 KES | Monthly Target: 200 KES (Excess goes to Emergency Fund)</small></p>
         <form action="/contribute" method="POST">
-            <select name="type">
-                <option value="weekly">Weekly (50 KES)</option>
-                <option value="monthly">Monthly (200 KES)</option>
-            </select>
-            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-            <button type="submit">Pay</button>
+            <label>Contribution Type:</label><br>
+            <select name="type" id="contribType" onchange="toggleAmountInput()">
+                <option value="weekly">Weekly (Target: 50 KES)</option>
+                <option value="monthly">Monthly (Target: 200 KES - Requires Admin Approval)</option>
+                <option value="meeting">Meeting Contribution (Fixed 100 KES)</option>
+            </select><br>
+            
+            <div id="amountDiv">
+                <input type="number" step="0.01" name="amount" id="amountInput" placeholder="Amount (KES)" required>
+            </div>
+            
+            <button type="submit">Pay Contribution</button>
         </form>
+    </div>
+
+    <div class="card">
+        <h3>Your Contribution Statuses</h3>
+        <table>
+            <tr><th>Type</th><th>Amount</th><th>Status</th></tr>
+            {% for c in contributions %}
+            <tr>
+                <td>{{ c.type.capitalize() }}</td>
+                <td>{{ c.amount }} KES</td>
+                <td>
+                    {% if c.status == 'Approved' %}<span style="color:green;">Approved</span>
+                    {% elif c.status == 'Pending' %}<span style="color:orange;">Pending Admin Approval</span>
+                    {% else %}<span style="color:red;">Declined</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
     </div>
 
     <div class="card">
@@ -76,6 +108,19 @@
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+
+        function toggleAmountInput() {
+            const type = document.getElementById('contribType').value;
+            const amountDiv = document.getElementById('amountDiv');
+            const amountInput = document.getElementById('amountInput');
+            if (type === 'meeting') {
+                amountDiv.style.display = 'none';
+                amountInput.removeAttribute('required');
+            } else {
+                amountDiv.style.display = 'block';
+                amountInput.setAttribute('required', 'required');
+            }
         }
     </script>
 </body>

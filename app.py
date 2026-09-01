@@ -20,6 +20,9 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     emergency_balance = db.Column(db.Float, default=0.0)
+    weekly_balance = db.Column(db.Float, default=0.0)
+    monthly_balance = db.Column(db.Float, default=0.0)
+    meeting_balance = db.Column(db.Float, default=0.0)
     profile_pic = db.Column(db.String(200), default='default.png')
     otp = db.Column(db.String(6), nullable=True)
 
@@ -28,6 +31,14 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class Contribution(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    type = db.Column(db.String(20), nullable=False) # weekly, monthly, meeting
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(20), default='Approved') # Weekly/Meeting auto-approved, Monthly needs admin approval
+    user = db.relationship('User', backref='contributions')
 
 class Loan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -54,7 +65,6 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
 
-# Routes
 @app.route('/')
 def home():
     if 'user_id' in session:
@@ -105,21 +115,22 @@ def user_dashboard():
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     members = User.query.filter_by(is_admin=False).all()
-    return render_template('dashboard.html', user=user, members=members)
+    user_contribs = Contribution.query.filter_by(user_id=user.id).all()
+    return render_template('dashboard.html', user=user, members=members, contributions=user_contribs)
 
 @app.route('/admin')
 def admin_dashboard():
     if 'user_id' not in session or not session.get('is_admin'):
         return redirect(url_for('login'))
     users = User.query.filter_by(is_admin=False).all()
+    pending_monthly = Contribution.query.filter_by(type='monthly', status='Pending').all()
     loans = Loan.query.filter_by(status='Pending').all()
     transfers = EmergencyTransfer.query.filter_by(status='Pending').all()
-    return render_template('admin.html', users=users, loans=loans, transfers=transfers)
+    return render_template('admin.html', users=users, pending_monthly=pending_monthly, loans=loans, transfers=transfers)
 
 @app.route('/upload_profile_pic', methods=['POST'])
 def upload_profile_pic():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    if 'user_id' not in session: return redirect(url_for('login'))
     file = request.files.get('profile_pic')
     if file and file.filename != '':
         filename = secure_filename(f"user_{session['user_id']}_{file.filename}")
@@ -132,24 +143,51 @@ def upload_profile_pic():
 
 @app.route('/contribute', methods=['POST'])
 def contribute():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    if 'user_id' not in session: return redirect(url_for('login'))
     ctype = request.form.get('type')
     amount = float(request.form.get('amount', 0))
-    target = 50.0 if ctype == 'weekly' else 200.0
     user = User.query.get(session['user_id'])
-    if amount > target:
-        user.emergency_balance += (amount - target)
-        db.session.commit()
-        flash(f'Contribution processed! {amount - target} KES added to Emergency Fund.')
-    else:
-        flash('Contribution processed!')
+
+    if ctype == 'weekly':
+        user.weekly_balance += amount
+        if amount > 50.0:
+            user.emergency_balance += (amount - 50.0)
+        db.session.add(Contribution(user_id=user.id, type='weekly', amount=amount, status='Approved'))
+        flash('Weekly contribution recorded!')
+    
+    elif ctype == 'monthly':
+        db.session.add(Contribution(user_id=user.id, type='monthly', amount=amount, status='Pending'))
+        flash('Monthly payment submitted to Admin for approval.')
+
+    elif ctype == 'meeting':
+        amount = 100.0  # Fixed 100 KES meeting contribution
+        user.meeting_balance += amount
+        db.session.add(Contribution(user_id=user.id, type='meeting', amount=amount, status='Approved'))
+        flash('100 KES Meeting contribution recorded!')
+
+    db.session.commit()
     return redirect(url_for('user_dashboard'))
+
+@app.route('/admin/contribution/<int:contrib_id>/<action>', methods=['POST'])
+def handle_contribution(contrib_id, action):
+    if not session.get('is_admin'): return redirect(url_for('login'))
+    contrib = Contribution.query.get(contrib_id)
+    if action == 'Approve':
+        contrib.status = 'Approved'
+        user = User.query.get(contrib.user_id)
+        user.monthly_balance += contrib.amount
+        if contrib.amount > 200.0:
+            user.emergency_balance += (contrib.amount - 200.0)
+        flash('Monthly contribution approved!')
+    else:
+        contrib.status = 'Declined'
+        flash('Monthly contribution declined.')
+    db.session.commit()
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/request_loan', methods=['POST'])
 def request_loan():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    if 'user_id' not in session: return redirect(url_for('login'))
     amount = float(request.form.get('amount', 0))
     if amount > 0:
         db.session.add(Loan(user_id=session['user_id'], amount=amount))
@@ -159,8 +197,7 @@ def request_loan():
 
 @app.route('/transfer_emergency', methods=['POST'])
 def transfer_emergency():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    if 'user_id' not in session: return redirect(url_for('login'))
     receiver_id = int(request.form.get('receiver_id'))
     amount = float(request.form.get('amount', 0))
     user = User.query.get(session['user_id'])
@@ -232,7 +269,7 @@ def reset_password_otp():
             user.set_password(new_password)
             user.otp = None
             db.session.commit()
-            flash('Password reset successfully! Log in with your new password.')
+            flash('Password reset successfully!')
             return redirect(url_for('login'))
         flash('Invalid username or OTP.')
     return render_template('reset_otp.html')
