@@ -44,6 +44,16 @@ class Loan(db.Model):
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
 
+class EmergencyTransfer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(50), default='Pending')
+    
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_transfers')
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_transfers')
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -136,8 +146,9 @@ def dashboard():
         return redirect(url_for('admin_dashboard'))
     contributions = Contribution.query.filter_by(user_id=user.id).all()
     loans = Loan.query.filter_by(user_id=user.id).all()
+    transfers = EmergencyTransfer.query.filter_by(sender_id=user.id).all()
     members = User.query.filter(User.id != user.id).all()
-    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, members=members)
+    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, transfers=transfers, members=members)
 
 @app.route('/upload_profile_pic', methods=['POST'])
 @login_required
@@ -204,10 +215,10 @@ def transfer_emergency():
         return redirect(url_for('dashboard'))
         
     if user.emergency_balance >= transfer_amt:
-        user.emergency_balance -= transfer_amt
-        recipient.emergency_balance += transfer_amt
+        new_transfer = EmergencyTransfer(sender_id=user.id, recipient_id=recipient.id, amount=transfer_amt, status='Pending')
+        db.session.add(new_transfer)
         db.session.commit()
-        flash(f'Successfully transferred {transfer_amt} KES emergency funds to {recipient.username}.')
+        flash('Emergency transfer request submitted to admin for approval.')
     else:
         flash('Insufficient emergency fund balance.')
         
@@ -221,8 +232,9 @@ def admin_dashboard():
         return redirect(url_for('dashboard'))
     pending_contribs = Contribution.query.filter_by(status='Pending').all()
     pending_loans = Loan.query.filter_by(status='Pending').all()
+    pending_transfers = EmergencyTransfer.query.filter_by(status='Pending').all()
     members = User.query.filter_by(is_admin=False).all()
-    return render_template('admin.html', pending=pending_contribs, pending_loans=pending_loans, members=members)
+    return render_template('admin.html', pending=pending_contribs, pending_loans=pending_loans, pending_transfers=pending_transfers, members=members)
 
 @app.route('/admin/approve/<int:contrib_id>')
 @login_required
@@ -299,6 +311,43 @@ def decline_loan(loan_id):
         loan.status = 'Declined'
         db.session.commit()
         flash('Loan declined.')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/approve_transfer/<int:transfer_id>')
+@login_required
+def approve_transfer(transfer_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
+        return redirect(url_for('dashboard'))
+        
+    transfer = EmergencyTransfer.query.get_or_404(transfer_id)
+    if transfer.status == 'Pending':
+        sender = User.query.get(transfer.sender_id)
+        recipient = User.query.get(transfer.recipient_id)
+        if sender.emergency_balance >= transfer.amount:
+            sender.emergency_balance -= transfer.amount
+            recipient.emergency_balance += transfer.amount
+            transfer.status = 'Approved'
+            db.session.commit()
+            flash('Emergency transfer approved successfully!')
+        else:
+            transfer.status = 'Declined'
+            db.session.commit()
+            flash('Sender had insufficient balance; transfer declined.')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/decline_transfer/<int:transfer_id>')
+@login_required
+def decline_transfer(transfer_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
+        return redirect(url_for('dashboard'))
+        
+    transfer = EmergencyTransfer.query.get_or_404(transfer_id)
+    if transfer.status == 'Pending':
+        transfer.status = 'Declined'
+        db.session.commit()
+        flash('Emergency transfer declined.')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/delete_user/<int:user_id>')
