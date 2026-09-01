@@ -160,9 +160,63 @@ def admin_dashboard():
     if not user.is_admin:
         return redirect(url_for('dashboard'))
     pending = Contribution.query.filter_by(status='Pending').all()
-    return render_template('admin.html', pending=pending)
+    members = User.query.all()
+    return render_template('admin.html', pending=pending, members=members)
+
+@app.route('/admin/approve/<int:contrib_id>')
+@login_required
+def approve_contribution(contrib_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
+        return redirect(url_for('dashboard'))
+        
+    contrib = Contribution.query.get_or_404(contrib_id)
+    if contrib.status == 'Pending':
+        contrib.status = 'Approved'
+        member = User.query.get(contrib.user_id)
+        
+        # Contribution capping logic & Emergency account diversion
+        if contrib.type == 'weekly':
+            limit = 50.0
+            if contrib.amount > limit:
+                excess = contrib.amount - limit
+                member.weekly_balance += limit
+                member.emergency_balance += excess
+            else:
+                member.weekly_balance += contrib.amount
+        elif contrib.type == 'monthly':
+            limit = 200.0
+            if contrib.amount > limit:
+                excess = contrib.amount - limit
+                member.monthly_balance += limit
+                member.emergency_balance += excess
+            else:
+                member.monthly_balance += contrib.amount
+        elif contrib.type == 'meeting':
+            member.meeting_balance += contrib.amount
+            
+        db.session.commit()
+        flash('Contribution approved and balances updated successfully!')
+        
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/decline/<int:contrib_id>')
+@login_required
+def decline_contribution(contrib_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
+        return redirect(url_for('dashboard'))
+        
+    contrib = Contribution.query.get_or_404(contrib_id)
+    if contrib.status == 'Pending':
+        contrib.status = 'Declined'
+        db.session.commit()
+        flash('Contribution has been declined.')
+        
+    return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     with app.app_context():
+        db.drop_all()  # Cleanly resets DB on every boot to match schema updates
         db.create_all()
     app.run(debug=True)
