@@ -94,6 +94,28 @@ def login():
         flash('Invalid credentials.')
     return render_template('login.html')
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('Username already exists. Choose another.')
+            return redirect(url_for('register'))
+            
+        hashed_password = generate_password_hash(password)
+        new_user = User(username=username, password_hash=hashed_password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash('Account created successfully! Please log in.')
+        return redirect(url_for('login'))
+        
+    return render_template('register.html')
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -126,7 +148,7 @@ def admin_dashboard():
         users=users
     )
 
-# ----------------- CONTRIB APPROVAL LOGIC (UPDATED WITH CAPPING) -----------------
+# ----------------- CONTRIB APPROVAL LOGIC (WITH CAPPING & EXCESS DIVERT) -----------------
 
 @app.route('/admin/contribution/<int:contrib_id>/<string:action>', methods=['POST'])
 def handle_contribution(contrib_id, action):
@@ -150,7 +172,7 @@ def handle_contribution(contrib_id, action):
                 intended_amount = total_amount
                 excess_amount = 0.0
 
-            # Update intended target balance (Capped)
+            # Update intended target balance
             if contrib_type == 'weekly':
                 user.weekly_balance += intended_amount
             elif contrib_type == 'monthly':
