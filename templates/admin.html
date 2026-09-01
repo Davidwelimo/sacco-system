@@ -4,22 +4,26 @@
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; }
-        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        :root { --bg: #f4f6f9; --card: #ffffff; --text: #333333; --border: #cccccc; }
+        body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --border: #444444; }
+        body { font-family: Arial, sans-serif; margin: 20px; background: var(--bg); color: var(--text); }
+        .card { background: var(--card); padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid var(--border); }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #f8f9fa; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
+        th { background: rgba(0,0,0,0.05); }
         button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; }
         .btn-green { background: #28a745; }
         .btn-red { background: #dc3545; }
         .btn-blue { background: #007bff; }
-        .flash { color: blue; font-weight: bold; margin-bottom: 10px; }
+        .flash { color: #007bff; font-weight: bold; margin-bottom: 10px; }
+        .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; }
     </style>
 </head>
 <body>
-    <div class="card">
+    <button type="button" class="toggle-btn" onclick="toggleTheme()">🌓 Mode</button>
+    <div class="card" style="clear:both;">
         <h2>Admin Dashboard</h2>
-        <a href="/logout">Logout</a>
+        <a href="/logout" style="color:#007bff;">Logout</a>
     </div>
 
     {% with messages = get_flashed_messages() %}
@@ -94,5 +98,13 @@
             {% endfor %}
         </table>
     </div>
+
+    <script>
+        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+    </script>
 </body>
 </html>

@@ -4,16 +4,20 @@
     <meta charset="UTF-8">
     <title>Reset Password</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 320px; }
-        input { width: 100%; padding: 10px; margin: 8px 0 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        :root { --bg: #f4f6f9; --card: #ffffff; --text: #333333; --border: #cccccc; }
+        body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --border: #444444; }
+        body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: var(--card); padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 320px; border: 1px solid var(--border); }
+        input { width: 100%; padding: 10px; margin: 8px 0 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 4px; box-sizing: border-box; }
         button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; margin-bottom: 15px; border-radius: 4px; cursor: pointer; float: right; }
         .flash { color: red; font-size: 0.85em; text-align: center; margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h3 style="text-align: center; margin-top: 0;">Reset Password with OTP</h3>
+        <button type="button" class="toggle-btn" onclick="toggleTheme()">🌓 Theme</button>
+        <h3 style="text-align: center; margin-top: 0; clear: both;">Reset Password with OTP</h3>
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
@@ -28,7 +32,14 @@
             <input type="password" name="new_password" required>
             <button type="submit">Reset Password</button>
         </form>
-        <div style="text-align:center; margin-top:15px;"><a href="/login">Back to Login</a></div>
+        <div style="text-align:center; margin-top:15px;"><a href="/login" style="color:#007bff;">Back to Login</a></div>
     </div>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+    </script>
 </body>
 </html>

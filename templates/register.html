@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SACCO Login</title>
+    <title>SACCO Register</title>
     <style>
         :root { --bg: #f4f6f9; --card: #ffffff; --text: #333333; --border: #cccccc; }
         body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --border: #444444; }
@@ -10,7 +10,7 @@
         .card { background: var(--card); padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 320px; border: 1px solid var(--border); }
         h2 { text-align: center; margin-top: 0; }
         input { width: 100%; padding: 10px; margin: 8px 0 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; margin-bottom: 15px; border-radius: 4px; cursor: pointer; float: right; }
         .flash { color: red; font-size: 0.85em; text-align: center; margin-bottom: 10px; }
         .links { text-align: center; margin-top: 15px; font-size: 0.85em; }
@@ -20,23 +20,20 @@
 <body>
     <div class="card">
         <button type="button" class="toggle-btn" onclick="toggleTheme()">🌓 Theme</button>
-        <h2 style="clear:both;">SACCO Portal</h2>
+        <h2 style="clear:both;">Join SACCO</h2>
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
             {% endif %}
         {% endwith %}
-        <form method="POST" action="/login">
+        <form method="POST" action="/register">
             <label>Username</label>
             <input type="text" name="username" required>
             <label>Password</label>
             <input type="password" name="password" required>
-            <button type="submit">Log In</button>
+            <button type="submit">Register Account</button>
         </form>
-        <div class="links">
-            <p><a href="/register">Create an Account</a></p>
-            <p><a href="/reset_password_otp">Forgot Password? Reset via OTP</a></p>
-        </div>
+        <div class="links">Already have an account? <a href="/login">Log In</a></div>
     </div>
     <script>
         if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
