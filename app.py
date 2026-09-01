@@ -28,8 +28,11 @@ class User(db.Model):
     emergency_balance = db.Column(db.Float, default=0.0)
     reset_requested = db.Column(db.Boolean, default=False)
     reset_otp = db.Column(db.String(10), nullable=True)
+    
     contributions = db.relationship('Contribution', backref='user', cascade='all, delete-orphan', lazy=True)
     loans = db.relationship('Loan', backref='user', cascade='all, delete-orphan', lazy=True)
+    sent_transfers = db.relationship('EmergencyTransfer', foreign_keys='EmergencyTransfer.sender_id', backref='sender', cascade='all, delete-orphan', lazy=True)
+    received_transfers = db.relationship('EmergencyTransfer', foreign_keys='EmergencyTransfer.recipient_id', backref='recipient', cascade='all, delete-orphan', lazy=True)
 
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -50,9 +53,6 @@ class EmergencyTransfer(db.Model):
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
-    
-    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_transfers')
-    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_transfers')
 
 def login_required(f):
     @wraps(f)
@@ -117,7 +117,7 @@ def forgot_password():
             flash('Password reset requested. Please contact the admin for your OTP.')
         else:
             flash('Username not found.')
-        return redirect(url_for('login'))
+        return redirect(url_for('forgot_password'))
     return render_template('forgot_password.html')
 
 @app.route('/reset_password', methods=['GET', 'POST'])
@@ -128,7 +128,7 @@ def reset_password():
         new_password = request.form.get('new_password')
         
         user = User.query.filter_by(username=username).first()
-        if user and user.reset_otp == otp:
+        if user and user.reset_otp and user.reset_otp == otp:
             user.password = generate_password_hash(new_password, method='scrypt')
             user.reset_otp = None
             user.reset_requested = False
