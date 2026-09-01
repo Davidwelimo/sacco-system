@@ -7,8 +7,8 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "sacco_zero_start_secret_key")
 
-# Database Configuration (Render PostgreSQL or local SQLite fallback)
-db_url = os.environ.get("DATABASE_URL", "sqlite:///sacco.db")
+# Database Configuration (Uses /tmp/sacco.db for write access on Render SQLite)
+db_url = os.environ.get("DATABASE_URL", "sqlite:////tmp/sacco.db")
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -915,4 +915,3 @@ def logout():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
-    
