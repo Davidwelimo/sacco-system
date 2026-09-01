@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f9; }
+        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f8f9fa; }
+        button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; }
+        .btn-green { background: #28a745; }
+        .btn-red { background: #dc3545; }
+        .btn-blue { background: #007bff; }
+        .flash { color: blue; font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Admin Dashboard</h2>
+        <a href="/logout">Logout</a>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <h3>Manage Members & Generate OTPs</h3>
+        <table>
+            <tr><th>ID</th><th>Username</th><th>Emergency Balance</th><th>OTP Action</th><th>Remove</th></tr>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>{{ u.username }}</td>
+                <td>{{ u.emergency_balance }} KES</td>
+                <td>
+                    <form action="/admin/generate_otp/{{ u.id }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-blue">Generate OTP</button>
+                    </form>
+                </td>
+                <td>
+                    <form action="/admin/delete_user/{{ u.id }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-red" onclick="return confirm('Remove user?');">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Pending Loan Requests</h3>
+        <table>
+            <tr><th>Borrower</th><th>Amount</th><th>Actions</th></tr>
+            {% for l in loans %}
+            <tr>
+                <td>{{ l.user.username }}</td>
+                <td>{{ l.amount }} KES</td>
+                <td>
+                    <form action="/admin/loan/{{ l.id }}/Approve" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-green">Approve</button>
+                    </form>
+                    <form action="/admin/loan/{{ l.id }}/Decline" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-red">Decline</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Pending Emergency Transfers</h3>
+        <table>
+            <tr><th>From</th><th>To</th><th>Amount</th><th>Actions</th></tr>
+            {% for t in transfers %}
+            <tr>
+                <td>{{ t.sender.username }}</td>
+                <td>{{ t.receiver.username }}</td>
+                <td>{{ t.amount }} KES</td>
+                <td>
+                    <form action="/admin/transfer/{{ t.id }}/Approve" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-green">Approve</button>
+                    </form>
+                    <form action="/admin/transfer/{{ t.id }}/Decline" method="POST" style="display:inline;">
+                        <button type="submit" class="btn-red">Decline</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</body>
+</html>
