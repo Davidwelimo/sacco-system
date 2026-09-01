@@ -20,6 +20,7 @@ ADMIN_PROFILE = {
 MEMBERS = {} # format: { username: { name, email, phone, balance, password, role="Member" } }
 LOANS = [] # { id, username, member_name, amount, purpose, duration, status }
 PAYMENTS = [] # { id, username, member_name, amount, ref_code, status, date }
+RESET_REQUESTS = [] # { id, username, member_name, phone, status, date }
 
 
 # ==========================================
@@ -64,7 +65,8 @@ LOGIN_HTML = """
                 </div>
                 <button type="submit" class="btn">Login</button>
             </form>
-            <button class="tab-btn" onclick="toggleForm()">New Member? Register Here</button>
+            <button class="tab-btn" onclick="toggleView('register-form')">New Member? Register Here</button>
+            <button class="tab-btn" onclick="toggleView('forgot-form')" style="color:#e53e3e;">Forgot Password?</button>
         </div>
 
         <div id="register-form" style="display:none;">
@@ -91,19 +93,28 @@ LOGIN_HTML = """
                 </div>
                 <button type="submit" class="btn btn-alt">Create Account</button>
             </form>
-            <button class="tab-btn" onclick="toggleForm()">Already registered? Login</button>
+            <button class="tab-btn" onclick="toggleView('login-form')">Already registered? Login</button>
+        </div>
+
+        <div id="forgot-form" style="display:none;">
+            <p style="font-size:12px; color:#4a5568; margin-bottom:10px;">Submit your username or phone. The Admin will verify and set a new password for you.</p>
+            <form method="POST" action="/request_reset">
+                <div class="form-group">
+                    <label>Your Username or Phone Number</label>
+                    <input type="text" name="identity" required>
+                </div>
+                <button type="submit" class="btn" style="background:#dd6b20;">Request Admin Reset</button>
+            </form>
+            <button class="tab-btn" onclick="toggleView('login-form')">Back to Login</button>
         </div>
     </div>
 
     <script>
-        function toggleForm() {
-            var l = document.getElementById('login-form');
-            var r = document.getElementById('register-form');
-            if (l.style.display === 'none') {
-                l.style.display = 'block'; r.style.display = 'none';
-            } else {
-                l.style.display = 'none'; r.style.display = 'block';
-            }
+        function toggleView(targetId) {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('forgot-form').style.display = 'none';
+            document.getElementById(targetId).style.display = 'block';
         }
     </script>
 </body>
@@ -130,15 +141,17 @@ ADMIN_DASHBOARD = """
         .btn-green { background: #38a169; }
         .btn-red { background: #e53e3e; }
         .btn-blue { background: #2b6cb0; }
+        .btn-orange { background: #dd6b20; }
         .badge { padding: 3px 7px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .badge-Pending { background: #feebc8; color: #c05621; }
-        .badge-Approved, .badge-Confirmed { background: #c6f6d5; color: #22543d; }
+        .badge-Approved, .badge-Confirmed, .badge-Resolved { background: #c6f6d5; color: #22543d; }
         .badge-Rejected { background: #fed7d7; color: #9b2c2c; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
         label { font-size: 12px; font-weight: bold; color: #4a5568; display: block; margin-bottom: 4px; }
         input { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
         .msg { color: #e53e3e; font-size: 13px; margin-bottom: 10px; }
         .success { color: #38a169; }
+        .reset-form { display: flex; gap: 5px; }
     </style>
 </head>
 <body>
@@ -151,7 +164,7 @@ ADMIN_DASHBOARD = """
         {% if msg %}<div class="card msg success"><strong>{{ msg }}</strong></div>{% endif %}
         {% if err %}<div class="card msg"><strong>{{ err }}</strong></div>{% endif %}
 
-        <!-- SECTION 1: CHANGE ADMIN CREDENTIALS -->
+        <!-- SECTION 1: ADMIN CREDENTIALS -->
         <div class="card">
             <h2>1. Admin Security Settings (Update Credentials)</h2>
             <form method="POST" action="/admin/update_credentials">
@@ -168,10 +181,50 @@ ADMIN_DASHBOARD = """
                 <button type="submit" class="btn btn-blue" style="margin-top:12px; padding: 8px 15px;">Update Credentials</button>
             </form>
         </div>
-        
-        <!-- SECTION 2: MEMBERS DIRECTORY & REMOVAL -->
+
+        <!-- SECTION 2: FORGOT PASSWORD REQUESTS -->
         <div class="card">
-            <h2>2. Registered SACCO Members (Total: {{ members|length }})</h2>
+            <h2>2. Password Reset Requests (Approvals)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Member</th>
+                        <th>Phone</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Action / Reset Password</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reset_requests %}
+                    <tr>
+                        <td>#{{ r.id }}</td>
+                        <td>{{ r.member_name }} (<strong>{{ r.username }}</strong>)</td>
+                        <td>{{ r.phone }}</td>
+                        <td>{{ r.date }}</td>
+                        <td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td>
+                        <td>
+                            {% if r.status == 'Pending' %}
+                            <form method="POST" action="/admin/resolve_reset/{{ r.id }}" class="reset-form">
+                                <input type="text" name="new_password" placeholder="Set new pass" required style="padding:4px; font-size:11px; width:130px;">
+                                <button type="submit" class="btn btn-orange">Set New Password</button>
+                            </form>
+                            {% else %}
+                            <span style="color:#a0aec0; font-size:11px;">Resolved</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align:center; color:#718096;">No password reset requests pending.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- SECTION 3: MEMBERS DIRECTORY, REMOVAL & MANUAL PASSWORD OVERRIDE -->
+        <div class="card">
+            <h2>3. Registered SACCO Members (Total: {{ members|length }})</h2>
             <table>
                 <thead>
                     <tr>
@@ -180,6 +233,7 @@ ADMIN_DASHBOARD = """
                         <th>Email</th>
                         <th>Phone</th>
                         <th>Savings Balance</th>
+                        <th>Manual Password Override</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -192,19 +246,25 @@ ADMIN_DASHBOARD = """
                         <td>{{ m.phone }}</td>
                         <td style="color: #2b6cb0; font-weight: bold;">KES {{ "{:,}".format(m.balance) }}</td>
                         <td>
-                            <a href="/admin/remove_member/{{ uname }}" class="btn btn-red" onclick="return confirm('Are you sure you want to remove member {{ uname }}?');">Remove Member</a>
+                            <form method="POST" action="/admin/direct_reset/{{ uname }}" class="reset-form">
+                                <input type="text" name="new_password" placeholder="New password" required style="padding:4px; font-size:11px; width:110px;">
+                                <button type="submit" class="btn btn-blue">Change</button>
+                            </form>
+                        </td>
+                        <td>
+                            <a href="/admin/remove_member/{{ uname }}" class="btn btn-red" onclick="return confirm('Are you sure you want to remove member {{ uname }}?');">Remove</a>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6" style="text-align:center; color:#718096;">No members registered yet.</td></tr>
+                    <tr><td colspan="7" style="text-align:center; color:#718096;">No members registered yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <!-- SECTION 3: PAYMENTS QUEUE -->
+        <!-- SECTION 4: PAYMENTS QUEUE -->
         <div class="card">
-            <h2>3. Deposit Verification Requests</h2>
+            <h2>4. Deposit Verification Requests</h2>
             <table>
                 <thead>
                     <tr>
@@ -242,9 +302,9 @@ ADMIN_DASHBOARD = """
             </table>
         </div>
 
-        <!-- SECTION 4: LOANS -->
+        <!-- SECTION 5: LOANS -->
         <div class="card">
-            <h2>4. Member Loan Applications</h2>
+            <h2>5. Member Loan Applications</h2>
             <table>
                 <thead>
                     <tr>
@@ -312,18 +372,41 @@ MEMBER_DASHBOARD = """
         .badge-Pending { background: #feebc8; color: #c05621; }
         .badge-Confirmed, .badge-Approved { background: #c6f6d5; color: #22543d; }
         .badge-Rejected { background: #fed7d7; color: #9b2c2c; }
+        .msg { color: #e53e3e; font-size: 13px; margin-bottom: 10px; }
+        .success { color: #38a169; }
     </style>
 </head>
 <body>
     <div class="navbar">
         <h2>SACCO Member Portal</h2>
-        <div>Logged in as: <strong>{{ member.name }}</strong> | <a href="/logout" style="color: #e2e8f0;">Logout</a></div>
+        <div>Logged in as: <strong>{{ member.name }}</strong> ({{ member.username }}) | <a href="/logout" style="color: #e2e8f0;">Logout</a></div>
     </div>
     <div class="container">
         
+        {% if msg %}<div class="card msg success"><strong>{{ msg }}</strong></div>{% endif %}
+        {% if err %}<div class="card msg"><strong>{{ err }}</strong></div>{% endif %}
+
         <div class="card">
             <h2>Your SACCO Savings Balance</h2>
             <div class="bal">KES {{ "{:,}".format(member.balance) }}</div>
+        </div>
+
+        <!-- PROFILE UPDATE SECTION -->
+        <div class="card">
+            <h2>Account Settings (Update Username / Password)</h2>
+            <form method="POST" action="/member/update_profile">
+                <div class="form-grid">
+                    <div>
+                        <label>Your Username</label>
+                        <input type="text" name="new_username" value="{{ member.username }}" required>
+                    </div>
+                    <div>
+                        <label>New Password</label>
+                        <input type="password" name="new_password" placeholder="Leave blank to keep current password">
+                    </div>
+                </div>
+                <button type="submit" class="btn" style="background:#4a5568;">Save Changes</button>
+            </form>
         </div>
 
         <div class="card">
@@ -410,17 +493,17 @@ def home():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        identity = request.form.get('identity')
+        identity = request.form.get('identity').lower().strip()
         password = request.form.get('password')
 
         # Check Admin
-        if identity in (ADMIN_PROFILE['username'], ADMIN_PROFILE['email']) and ADMIN_PROFILE['password'] == password:
+        if identity in (ADMIN_PROFILE['username'].lower(), ADMIN_PROFILE['email'].lower()) and ADMIN_PROFILE['password'] == password:
             session['user'] = ADMIN_PROFILE
             return redirect(url_for('admin_dashboard'))
 
         # Check Members
         for uname, details in MEMBERS.items():
-            if identity in (uname, details['email']) and details['password'] == password:
+            if identity in (uname.lower(), details['email'].lower()) and details['password'] == password:
                 session['user'] = details
                 return redirect(url_for('member_dashboard'))
 
@@ -436,7 +519,7 @@ def register():
     phone = request.form.get('phone')
     password = request.form.get('password')
 
-    if username in MEMBERS or username == ADMIN_PROFILE['username']:
+    if username in MEMBERS or username == ADMIN_PROFILE['username'].lower():
         return render_template_string(LOGIN_HTML, error="Username already exists!")
 
     MEMBERS[username] = {
@@ -451,13 +534,37 @@ def register():
 
     return render_template_string(LOGIN_HTML, success="Registration successful! Please login below.")
 
+@app.route('/request_reset', methods=['POST'])
+def request_reset():
+    identity = request.form.get('identity').lower().strip()
+    target_member = None
+
+    for uname, m in MEMBERS.items():
+        if identity in (uname.lower(), m['phone'].lower()):
+            target_member = m
+            break
+
+    if target_member:
+        today = datetime.date.today().strftime('%Y-%m-%d')
+        RESET_REQUESTS.append({
+            "id": len(RESET_REQUESTS) + 1,
+            "username": target_member['username'],
+            "member_name": target_member['name'],
+            "phone": target_member['phone'],
+            "status": "Pending",
+            "date": today
+        })
+        return render_template_string(LOGIN_HTML, success="Reset request sent to Admin. Contact the Admin to approve and get your new password.")
+    
+    return render_template_string(LOGIN_HTML, error="No account found matching that username or phone number.")
+
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if 'user' not in session or session['user']['role'] != 'Admin':
         return redirect(url_for('login'))
     msg = request.args.get('msg')
     err = request.args.get('err')
-    return render_template_string(ADMIN_DASHBOARD, admin=ADMIN_PROFILE, members=MEMBERS, payments=PAYMENTS, loans=LOANS, msg=msg, err=err)
+    return render_template_string(ADMIN_DASHBOARD, admin=ADMIN_PROFILE, members=MEMBERS, payments=PAYMENTS, loans=LOANS, reset_requests=RESET_REQUESTS, msg=msg, err=err)
 
 @app.route('/admin/update_credentials', methods=['POST'])
 def update_credentials():
@@ -476,6 +583,36 @@ def update_credentials():
 
     session['user'] = ADMIN_PROFILE
     return redirect(url_for('admin_dashboard', msg="Admin credentials updated successfully!"))
+
+@app.route('/admin/resolve_reset/<int:req_id>', methods=['POST'])
+def resolve_reset(req_id):
+    if 'user' not in session or session['user']['role'] != 'Admin':
+        return redirect(url_for('login'))
+
+    new_password = request.form.get('new_password')
+
+    for r in RESET_REQUESTS:
+        if r['id'] == req_id and r['status'] == 'Pending':
+            r['status'] = 'Resolved'
+            uname = r['username']
+            if uname in MEMBERS:
+                MEMBERS[uname]['password'] = new_password
+            return redirect(url_for('admin_dashboard', msg=f"Password for member '{uname}' updated to '{new_password}'."))
+
+    return redirect(url_for('admin_dashboard', err="Request not found."))
+
+@app.route('/admin/direct_reset/<username>', methods=['POST'])
+def direct_reset(username):
+    if 'user' not in session or session['user']['role'] != 'Admin':
+        return redirect(url_for('login'))
+
+    new_password = request.form.get('new_password')
+
+    if username in MEMBERS:
+        MEMBERS[username]['password'] = new_password
+        return redirect(url_for('admin_dashboard', msg=f"Password for '{username}' changed to '{new_password}'."))
+
+    return redirect(url_for('admin_dashboard', err="Member not found."))
 
 @app.route('/admin/remove_member/<username>')
 def remove_member(username):
@@ -551,8 +688,45 @@ def member_dashboard():
 
     current_member = MEMBERS[uname]
     user_payments = [p for p in PAYMENTS if p['username'] == uname]
+    msg = request.args.get('msg')
+    err = request.args.get('err')
 
-    return render_template_string(MEMBER_DASHBOARD, member=current_member, user_payments=user_payments)
+    return render_template_string(MEMBER_DASHBOARD, member=current_member, user_payments=user_payments, msg=msg, err=err)
+
+@app.route('/member/update_profile', methods=['POST'])
+def update_profile():
+    if 'user' not in session or session['user']['role'] != 'Member':
+        return redirect(url_for('login'))
+
+    old_uname = session['user']['username']
+    new_uname = request.form.get('new_username').lower().strip()
+    new_password = request.form.get('new_password')
+
+    if old_uname not in MEMBERS:
+        return redirect(url_for('login'))
+
+    # If changing username, make sure it's not taken by someone else
+    if new_uname != old_uname and (new_uname in MEMBERS or new_uname == ADMIN_PROFILE['username'].lower()):
+        return redirect(url_for('member_dashboard', err="That username is already taken!"))
+
+    # Copy and update details
+    member_data = MEMBERS.pop(old_uname)
+    member_data['username'] = new_uname
+    if new_password:
+        member_data['password'] = new_password
+
+    MEMBERS[new_uname] = member_data
+    session['user'] = member_data
+
+    # Update references in PAYMENTS & LOANS
+    for p in PAYMENTS:
+        if p['username'] == old_uname:
+            p['username'] = new_uname
+    for l in LOANS:
+        if l['username'] == old_uname:
+            l['username'] = new_uname
+
+    return redirect(url_for('member_dashboard', msg="Account details updated successfully!"))
 
 @app.route('/member/notify_payment', methods=['POST'])
 def notify_payment():
