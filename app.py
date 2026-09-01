@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from functools import wraps
 import os
+import random
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -25,7 +26,9 @@ class User(db.Model):
     monthly_balance = db.Column(db.Float, default=0.0)
     meeting_balance = db.Column(db.Float, default=0.0)
     emergency_balance = db.Column(db.Float, default=0.0)
-    contributions = db.relationship('Contribution', backref='user', lazy=True)
+    reset_requested = db.Column(db.Boolean, default=False)
+    reset_otp = db.Column(db.String(10), nullable=True)
+    contributions = db.relationship('Contribution', backref='user', cascade='all, delete-orphan', lazy=True)
 
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -86,16 +89,37 @@ def logout():
     flash('Logged out successfully.')
     return redirect(url_for('login'))
 
-@app.route('/make_admin/<username>')
-def make_admin(username):
-    user = User.query.filter_by(username=username).first()
-    if user:
-        user.is_admin = True
-        db.session.commit()
-        flash(f'User {username} is now an admin!')
-    else:
-        flash('User not found.')
-    return redirect(url_for('login'))
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        user = User.query.filter_by(username=username).first()
+        if user:
+            user.reset_requested = True
+            db.session.commit()
+            flash('Password reset requested. Please contact the admin for your OTP.')
+        else:
+            flash('Username not found.')
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        otp = request.form.get('otp')
+        new_password = request.form.get('new_password')
+        
+        user = User.query.filter_by(username=username).first()
+        if user and user.reset_otp == otp:
+            user.password = generate_password_hash(new_password, method='scrypt')
+            user.reset_otp = None
+            user.reset_requested = False
+            db.session.commit()
+            flash('Password reset successfully! You can now log in.')
+            return redirect(url_for('login'))
+        flash('Invalid username or OTP.')
+    return render_template('reset_password.html')
 
 @app.route('/dashboard')
 @login_required
@@ -135,18 +159,6 @@ def contribute():
     db.session.add(new_contrib)
     db.session.commit()
     flash('Contribution submitted for admin approval.')
-    return redirect(url_for('dashboard'))
-
-@app.route('/request_loan', methods=['POST'])
-@login_required
-def request_loan():
-    flash('Loan request submitted successfully.')
-    return redirect(url_for('dashboard'))
-
-@app.route('/transfer_emergency', methods=['POST'])
-@login_required
-def transfer_emergency():
-    flash('Transfer request submitted successfully.')
     return redirect(url_for('dashboard'))
 
 @app.route('/admin_dashboard')
@@ -191,8 +203,7 @@ def approve_contribution(contrib_id):
             member.meeting_balance += contrib.amount
             
         db.session.commit()
-        flash('Contribution approved and balances updated successfully!')
-        
+        flash('Contribution approved successfully!')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/decline/<int:contrib_id>')
@@ -206,11 +217,39 @@ def decline_contribution(contrib_id):
     if contrib.status == 'Pending':
         contrib.status = 'Declined'
         db.session.commit()
-        flash('Contribution has been declined.')
-        
+        flash('Contribution declined.')
     return redirect(url_for('admin_dashboard'))
 
-# Automatically create tables and default admin account on startup
+@app.route('/admin/delete_user/<int:user_id>')
+@login_required
+def delete_user(user_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
+        return redirect(url_for('dashboard'))
+        
+    user_to_delete = User.query.get_or_404(user_id)
+    if user_to_delete.is_admin:
+        flash('Cannot delete admin account.')
+    else:
+        db.session.delete(user_to_delete)
+        db.session.commit()
+        flash('Member removed successfully.')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/issue_otp/<int:user_id>')
+@login_required
+def issue_otp(user_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
+        return redirect(url_for('dashboard'))
+        
+    target_user = User.query.get_or_404(user_id)
+    otp = str(random.randint(100000, 999999))
+    target_user.reset_otp = otp
+    db.session.commit()
+    flash(f'OTP generated for {target_user.username}: {otp}')
+    return redirect(url_for('admin_dashboard'))
+
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
