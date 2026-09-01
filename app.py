@@ -116,6 +116,15 @@ def register():
         
     return render_template('register.html')
 
+@app.route('/make_admin/<string:username>')
+def make_admin(username):
+    user = User.query.filter_by(username=username).first()
+    if user:
+        user.is_admin = True
+        db.session.commit()
+        return f"User '{username}' is now an admin! Go to /login and log in."
+    return f"User '{username}' not found."
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -148,7 +157,7 @@ def admin_dashboard():
         users=users
     )
 
-# ----------------- CONTRIB APPROVAL LOGIC (WITH CAPPING & EXCESS DIVERT) -----------------
+# ----------------- CONTRIB APPROVAL LOGIC -----------------
 
 @app.route('/admin/contribution/<int:contrib_id>/<string:action>', methods=['POST'])
 def handle_contribution(contrib_id, action):
@@ -172,7 +181,6 @@ def handle_contribution(contrib_id, action):
                 intended_amount = total_amount
                 excess_amount = 0.0
 
-            # Update intended target balance
             if contrib_type == 'weekly':
                 user.weekly_balance += intended_amount
             elif contrib_type == 'monthly':
@@ -180,7 +188,6 @@ def handle_contribution(contrib_id, action):
             elif contrib_type == 'meeting':
                 user.meeting_balance += intended_amount
 
-            # Auto-divert excess to Emergency account
             if excess_amount > 0:
                 user.emergency_balance += excess_amount
                 flash(f"Approved {contrib_type.capitalize()}: KES {intended_amount:.2f} assigned. KES {excess_amount:.2f} excess moved to Emergency Account.")
