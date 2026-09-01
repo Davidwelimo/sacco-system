@@ -26,6 +26,10 @@ class User(db.Model):
     profile_pic = db.Column(db.String(200), default='default.png')
     otp = db.Column(db.String(6), nullable=True)
 
+    # Cascade delete prevents 500 errors when removing users linked to records
+    contributions = db.relationship('Contribution', backref='user', cascade='all, delete-orphan')
+    loans = db.relationship('Loan', backref='user', cascade='all, delete-orphan')
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -37,15 +41,13 @@ class Contribution(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     type = db.Column(db.String(20), nullable=False)  # weekly, monthly, meeting
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='Pending')  # All payments default to Pending
-    user = db.relationship('User', backref='contributions')
-
+    status = db.Column(db.String(20), default='Pending')
+    
 class Loan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default='Pending')
-    user = db.relationship('User', backref='loans')
 
 class EmergencyTransfer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -56,7 +58,7 @@ class EmergencyTransfer(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id])
     receiver = db.relationship('User', foreign_keys=[receiver_id])
 
-# Initialize DB
+# Initialize DB schema and admin user
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
@@ -171,7 +173,7 @@ def contribute():
     user = User.query.get(session['user_id'])
     if not user: return redirect(url_for('login'))
 
-    # All contribution types saved as 'Pending' - No balance updated until admin approves
+    # All payments set to 'Pending' — requires admin approval before balances update
     db.session.add(Contribution(user_id=user.id, type=ctype, amount=amount, status='Pending'))
     db.session.commit()
     flash(f'{ctype.capitalize()} payment submitted to Admin for approval.')
@@ -196,7 +198,7 @@ def handle_contribution(contrib_id, action):
                         user.emergency_balance += (contrib.amount - 200.0)
                 elif contrib.type == 'meeting':
                     user.meeting_balance += contrib.amount
-            flash('Contribution approved and added to user balance!')
+            flash('Contribution approved and added to member balance!')
         else:
             contrib.status = 'Declined'
             flash('Contribution declined.')
@@ -261,9 +263,15 @@ def delete_user(user_id):
     if not session.get('is_admin'): return redirect(url_for('login'))
     user = User.query.get(user_id)
     if user:
+        # Explicitly delete related emergency transfer records before deleting the user
+        EmergencyTransfer.query.filter(
+            (EmergencyTransfer.sender_id == user.id) | (EmergencyTransfer.receiver_id == user.id)
+        ).delete()
+        
+        # Delete user (contributions & loans cascade-delete automatically)
         db.session.delete(user)
         db.session.commit()
-        flash('User account deleted.')
+        flash('User account deleted successfully.')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/loan/<int:loan_id>/<action>', methods=['POST'])
@@ -291,7 +299,7 @@ def handle_transfer(transfer_id, action):
                 flash('Transfer approved.')
             else:
                 t.status = 'Declined'
-                flash('Failed: Sender insufficient balance.')
+                flash('Failed: Sender has insufficient balance.')
         else:
             t.status = 'Declined'
             flash('Transfer declined.')
