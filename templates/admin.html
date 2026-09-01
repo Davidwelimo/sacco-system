@@ -2,96 +2,229 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - SACCO System</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 20px; }
-        section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        * { box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { margin: 20px; background-color: #f4f6f9; color: #333; }
+        header { display: flex; justify-content: space-between; align-items: center; background: #003366; color: white; padding: 15px 20px; border-radius: 5px; }
+        header a { color: #ffcc00; text-decoration: none; font-weight: bold; }
+        .flash { padding: 10px; margin: 15px 0; background: #e0f2fe; border: 1px solid #0284c7; color: #0369a1; border-radius: 4px; }
+        section { background: white; padding: 20px; margin-top: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: #003366; border-bottom: 2px solid #003366; padding-bottom: 5px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-        .btn-approve { background: #22c55e; color: white; border: none; padding: 5px 10px; cursor: pointer; }
-        .btn-reject { background: #ef4444; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+        th { background-color: #f0f4f8; }
+        .btn { padding: 6px 12px; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        .btn-approve { background: #22c55e; color: white; }
+        .btn-reject { background: #ef4444; color: white; }
+        .btn-delete { background: #dc2626; color: white; }
+        .btn-otp { background: #0284c7; color: white; }
+        form { display: inline; }
+        .empty-text { color: #666; font-style: italic; padding: 10px 0; }
     </style>
 </head>
 <body>
-    <h1>Admin Panel</h1>
-    
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}{% for m in messages %}<p style="color: blue;">{{ m }}</p>{% endfor %}{% endif %}
-    {% endwith %}
 
-    <!-- Emergency Transfers for Friends -->
-    <section>
-        <h2>Pending Transfers to Friends</h2>
-        {% if transfers %}
-        <table>
-            <tr><th>Sender</th><th>Friend (Receiver)</th><th>Amount</th><th>Purpose</th><th>Action</th></tr>
+<header>
+    <h1>SACCO Admin Dashboard</h1>
+    <div>
+        <span>Welcome, {{ session.username }}</span> | 
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+</header>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="flash">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<!-- Pending Emergency Transfers for Friends -->
+<section>
+    <h2>Pending Transfers to Friends</h2>
+    {% if transfers %}
+    <table>
+        <thead>
+            <tr>
+                <th>Sender</th>
+                <th>Receiver</th>
+                <th>Amount</th>
+                <th>Purpose</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
             {% for t in transfers %}
             <tr>
                 <td>{{ t.sender.username }}</td>
                 <td>{{ t.receiver.username }}</td>
                 <td>KES {{ "%.2f"|format(t.amount) }}</td>
-                <td>{{ t.purpose|capitalize }} Contribution</td>
+                <td><strong>{{ t.purpose|capitalize }} Contribution</strong></td>
                 <td>
-                    <form action="{{ url_for('handle_transfer', transfer_id=t.id, action='Approve') }}" method="POST" style="display:inline;">
-                        <button class="btn-approve" type="submit">Approve</button>
+                    <form action="{{ url_for('handle_transfer', transfer_id=t.id, action='Approve') }}" method="POST">
+                        <button type="submit" class="btn btn-approve">Approve</button>
                     </form>
-                    <form action="{{ url_for('handle_transfer', transfer_id=t.id, action='Reject') }}" method="POST" style="display:inline;">
-                        <button class="btn-reject" type="submit">Reject</button>
+                    <form action="{{ url_for('handle_transfer', transfer_id=t.id, action='Reject') }}" method="POST">
+                        <button type="submit" class="btn btn-reject">Reject</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-        </table>
-        {% else %}<p>No pending transfer requests.</p>{% endif %}
-    </section>
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-text">No pending friend transfer requests.</p>
+    {% endif %}
+</section>
 
-    <!-- Emergency Self-Pay Requests -->
-    <section>
-        <h2>Pending Emergency Self-Pay Requests</h2>
-        {% if self_pays %}
-        <table>
-            <tr><th>Member</th><th>Target Contribution</th><th>Amount</th><th>Action</th></tr>
+<!-- Pending Emergency Self-Pay Requests -->
+<section>
+    <h2>Pending Emergency Self-Pay Requests</h2>
+    {% if self_pays %}
+    <table>
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Target Contribution</th>
+                <th>Amount</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
             {% for s in self_pays %}
             <tr>
                 <td>{{ s.user.username }}</td>
-                <td>{{ s.target_type|capitalize }} Contribution</td>
+                <td><strong>{{ s.target_type|capitalize }} Contribution</strong></td>
                 <td>KES {{ "%.2f"|format(s.amount) }}</td>
                 <td>
-                    <form action="{{ url_for('handle_self_pay', req_id=s.id, action='Approve') }}" method="POST" style="display:inline;">
-                        <button class="btn-approve" type="submit">Approve</button>
+                    <form action="{{ url_for('handle_self_pay', req_id=s.id, action='Approve') }}" method="POST">
+                        <button type="submit" class="btn btn-approve">Approve</button>
                     </form>
-                    <form action="{{ url_for('handle_self_pay', req_id=s.id, action='Reject') }}" method="POST" style="display:inline;">
-                        <button class="btn-reject" type="submit">Reject</button>
+                    <form action="{{ url_for('handle_self_pay', req_id=s.id, action='Reject') }}" method="POST">
+                        <button type="submit" class="btn btn-reject">Reject</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-        </table>
-        {% else %}<p>No pending self-pay requests.</p>{% endif %}
-    </section>
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-text">No pending emergency self-pay requests.</p>
+    {% endif %}
+</section>
 
-    <!-- Pending Loans -->
-    <section>
-        <h2>Pending Loan Applications</h2>
-        {% if loans %}
-        <table>
-            <tr><th>Member</th><th>Amount Requested</th><th>Action</th></tr>
+<!-- Pending Contributions -->
+<section>
+    <h2>Pending Contributions</h2>
+    {% if pending_contribs %}
+    <table>
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in pending_contribs %}
+            <tr>
+                <td>{{ c.user.username }}</td>
+                <td>{{ c.type|capitalize }}</td>
+                <td>KES {{ "%.2f"|format(c.amount) }}</td>
+                <td>
+                    <form action="{{ url_for('handle_contribution', contrib_id=c.id, action='Approve') }}" method="POST">
+                        <button type="submit" class="btn btn-approve">Approve</button>
+                    </form>
+                    <form action="{{ url_for('handle_contribution', contrib_id=c.id, action='Decline') }}" method="POST">
+                        <button type="submit" class="btn btn-reject">Decline</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-text">No pending contributions.</p>
+    {% endif %}
+</section>
+
+<!-- Pending Loans -->
+<section>
+    <h2>Pending Loan Applications</h2>
+    {% if loans %}
+    <table>
+        <thead>
+            <tr>
+                <th>Applicant</th>
+                <th>Requested Amount</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
             {% for l in loans %}
             <tr>
                 <td>{{ l.user.username }}</td>
                 <td>KES {{ "%.2f"|format(l.amount) }}</td>
                 <td>
-                    <form action="{{ url_for('handle_loan', loan_id=l.id, action='Approve') }}" method="POST" style="display:inline;">
-                        <button class="btn-approve" type="submit">Approve</button>
+                    <form action="{{ url_for('handle_loan', loan_id=l.id, action='Approve') }}" method="POST">
+                        <button type="submit" class="btn btn-approve">Approve</button>
                     </form>
-                    <form action="{{ url_for('handle_loan', loan_id=l.id, action='Reject') }}" method="POST" style="display:inline;">
-                        <button class="btn-reject" type="submit">Reject</button>
+                    <form action="{{ url_for('handle_loan', loan_id=l.id, action='Decline') }}" method="POST">
+                        <button type="submit" class="btn btn-reject">Decline</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-        </table>
-        {% else %}<p>No pending loans.</p>{% endif %}
-    </section>
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-text">No pending loan applications.</p>
+    {% endif %}
+</section>
+
+<!-- Registered Members Management & Balance Overview -->
+<section>
+    <h2>All Members Overview</h2>
+    {% if users %}
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Weekly Bal</th>
+                <th>Monthly Bal</th>
+                <th>Meeting Bal</th>
+                <th>Emergency Bal</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.username }}</td>
+                <td>KES {{ "%.2f"|format(u.weekly_balance) }}</td>
+                <td>KES {{ "%.2f"|format(u.monthly_balance) }}</td>
+                <td>KES {{ "%.2f"|format(u.meeting_balance) }}</td>
+                <td>KES {{ "%.2f"|format(u.emergency_balance) }}</td>
+                <td>
+                    <form action="{{ url_for('generate_otp', user_id=u.id) }}" method="POST">
+                        <button type="submit" class="btn btn-otp">Generate OTP</button>
+                    </form>
+                    <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST" onsubmit="return confirm('Delete this user?');">
+                        <button type="submit" class="btn btn-delete">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-text">No registered members found.</p>
+    {% endif %}
+</section>
+
 </body>
 </html>
