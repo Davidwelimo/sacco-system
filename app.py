@@ -175,7 +175,6 @@ def approve_contribution(contrib_id):
         contrib.status = 'Approved'
         member = User.query.get(contrib.user_id)
         
-        # Contribution capping logic & Emergency account diversion
         if contrib.type == 'weekly':
             limit = 50.0
             if contrib.amount > limit:
@@ -215,8 +214,9 @@ def decline_contribution(contrib_id):
         
     return redirect(url_for('admin_dashboard'))
 
+# Automatically create database tables when app boots up (compatible with Gunicorn/Render)
+with app.app_context():
+    db.create_all()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.drop_all()  # Cleanly resets DB on every boot to match schema updates
-        db.create_all()
     app.run(debug=True)
