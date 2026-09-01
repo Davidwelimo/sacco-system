@@ -6,26 +6,19 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "sacco_zero_start_secret_key")
 
 # ==========================================
-# IN-MEMORY DATA STORES (STARTS AT ZERO)
+# IN-MEMORY DATA STORES
 # ==========================================
 
-# Pre-created Admin account
-USERS = {
-    "admin": {
-        "password": "admin123",
-        "email": "admin@sacco.com",
-        "role": "Admin",
-        "name": "SACCO Admin"
-    }
+ADMIN_PROFILE = {
+    "username": "admin",
+    "password": "admin123",
+    "email": "admin@sacco.com",
+    "role": "Admin",
+    "name": "SACCO Admin"
 }
 
-# Member list (Empty at start)
 MEMBERS = {} # format: { username: { name, email, phone, balance, password, role="Member" } }
-
-# Loan Applications (Empty at start)
 LOANS = [] # { id, username, member_name, amount, purpose, duration, status }
-
-# Payment / Deposit Verification Requests (Empty at start)
 PAYMENTS = [] # { id, username, member_name, amount, ref_code, status, date }
 
 
@@ -45,7 +38,7 @@ LOGIN_HTML = """
         h2 { color: #1a365d; text-align: center; margin-bottom: 20px; }
         .form-group { margin-bottom: 12px; }
         label { font-size: 13px; font-weight: bold; color: #4a5568; display: block; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 9px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+        input { width: 100%; padding: 9px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
         .btn { width: 100%; padding: 10px; background: #2b6cb0; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-alt { background: #38a169; }
         .tab-btn { background: none; border: none; color: #2b6cb0; cursor: pointer; text-decoration: underline; font-size: 13px; margin-top: 15px; width: 100%; text-align: center; }
@@ -96,7 +89,7 @@ LOGIN_HTML = """
                     <label>Password</label>
                     <input type="password" name="password" required>
                 </div>
-                <button type="submit" class="btn btn-alt">Create Account (Starts at KES 0)</button>
+                <button type="submit" class="btn btn-alt">Create Account</button>
             </form>
             <button class="tab-btn" onclick="toggleForm()">Already registered? Login</button>
         </div>
@@ -136,22 +129,49 @@ ADMIN_DASHBOARD = """
         .btn { padding: 5px 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 11px; }
         .btn-green { background: #38a169; }
         .btn-red { background: #e53e3e; }
+        .btn-blue { background: #2b6cb0; }
         .badge { padding: 3px 7px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .badge-Pending { background: #feebc8; color: #c05621; }
         .badge-Approved, .badge-Confirmed { background: #c6f6d5; color: #22543d; }
         .badge-Rejected { background: #fed7d7; color: #9b2c2c; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        label { font-size: 12px; font-weight: bold; color: #4a5568; display: block; margin-bottom: 4px; }
+        input { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+        .msg { color: #e53e3e; font-size: 13px; margin-bottom: 10px; }
+        .success { color: #38a169; }
     </style>
 </head>
 <body>
     <div class="navbar">
         <h2>SACCO Admin Control Center</h2>
-        <div>Logged in as: <strong>Admin</strong> | <a href="/logout" style="color: #feb2b2;">Logout</a></div>
+        <div>Logged in as: <strong>{{ admin.username }}</strong> | <a href="/logout" style="color: #feb2b2;">Logout</a></div>
     </div>
     <div class="container">
-        
-        <!-- SECTION 1: MEMBERS DIRECTORY & BALANCES -->
+
+        {% if msg %}<div class="card msg success"><strong>{{ msg }}</strong></div>{% endif %}
+        {% if err %}<div class="card msg"><strong>{{ err }}</strong></div>{% endif %}
+
+        <!-- SECTION 1: CHANGE ADMIN CREDENTIALS -->
         <div class="card">
-            <h2>1. Registered SACCO Members (Total: {{ members|length }})</h2>
+            <h2>1. Admin Security Settings (Update Credentials)</h2>
+            <form method="POST" action="/admin/update_credentials">
+                <div class="form-grid">
+                    <div>
+                        <label>New Admin Username</label>
+                        <input type="text" name="new_username" value="{{ admin.username }}" required>
+                    </div>
+                    <div>
+                        <label>New Password</label>
+                        <input type="password" name="new_password" placeholder="Leave blank to keep current password">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-blue" style="margin-top:12px; padding: 8px 15px;">Update Credentials</button>
+            </form>
+        </div>
+        
+        <!-- SECTION 2: MEMBERS DIRECTORY & REMOVAL -->
+        <div class="card">
+            <h2>2. Registered SACCO Members (Total: {{ members|length }})</h2>
             <table>
                 <thead>
                     <tr>
@@ -159,7 +179,8 @@ ADMIN_DASHBOARD = """
                         <th>Full Name</th>
                         <th>Email</th>
                         <th>Phone</th>
-                        <th>Savings Balance (KES)</th>
+                        <th>Savings Balance</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -170,25 +191,27 @@ ADMIN_DASHBOARD = """
                         <td>{{ m.email }}</td>
                         <td>{{ m.phone }}</td>
                         <td style="color: #2b6cb0; font-weight: bold;">KES {{ "{:,}".format(m.balance) }}</td>
+                        <td>
+                            <a href="/admin/remove_member/{{ uname }}" class="btn btn-red" onclick="return confirm('Are you sure you want to remove member {{ uname }}?');">Remove Member</a>
+                        </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="5" style="text-align:center; color:#718096;">No members registered yet. System starting from zero.</td></tr>
+                    <tr><td colspan="6" style="text-align:center; color:#718096;">No members registered yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <!-- SECTION 2: PAYMENT / DEPOSIT CONFIRMATION QUEUE -->
+        <!-- SECTION 3: PAYMENTS QUEUE -->
         <div class="card">
-            <h2>2. Payment & Deposit Verification Requests</h2>
-            <p style="font-size: 12px; color: #718096; margin-bottom: 10px;">Verify M-Pesa / Bank Reference code before confirming funds into member balance.</p>
+            <h2>3. Deposit Verification Requests</h2>
             <table>
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Member</th>
-                        <th>Amount (KES)</th>
-                        <th>Ref Code / Receipt</th>
+                        <th>Amount</th>
+                        <th>Ref Code</th>
                         <th>Date</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -205,7 +228,7 @@ ADMIN_DASHBOARD = """
                         <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
                         <td>
                             {% if p.status == 'Pending' %}
-                                <a href="/admin/confirm_payment/{{ p.id }}" class="btn btn-green">Confirm & Add Funds</a>
+                                <a href="/admin/confirm_payment/{{ p.id }}" class="btn btn-green">Confirm</a>
                                 <a href="/admin/reject_payment/{{ p.id }}" class="btn btn-red">Reject</a>
                             {% else %}
                                 <span style="color:#a0aec0; font-size:11px;">Processed</span>
@@ -213,21 +236,21 @@ ADMIN_DASHBOARD = """
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7" style="text-align:center; color:#718096;">No payment verification claims submitted yet.</td></tr>
+                    <tr><td colspan="7" style="text-align:center; color:#718096;">No deposit requests.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <!-- SECTION 3: LOAN REQUESTS -->
+        <!-- SECTION 4: LOANS -->
         <div class="card">
-            <h2>3. Member Loan Applications</h2>
+            <h2>4. Member Loan Applications</h2>
             <table>
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Member</th>
-                        <th>Amount (KES)</th>
+                        <th>Amount</th>
                         <th>Purpose</th>
                         <th>Duration</th>
                         <th>Status</th>
@@ -298,14 +321,11 @@ MEMBER_DASHBOARD = """
     </div>
     <div class="container">
         
-        <!-- SAVINGS BALANCE -->
         <div class="card">
             <h2>Your SACCO Savings Balance</h2>
             <div class="bal">KES {{ "{:,}".format(member.balance) }}</div>
-            <p style="font-size: 12px; color: #718096;">Deposits will reflect here once confirmed by Admin.</p>
         </div>
 
-        <!-- REPORT MONEY SENT -->
         <div class="card">
             <h2>Report Payment / Send Money to Admin</h2>
             <form method="POST" action="/member/notify_payment">
@@ -323,7 +343,6 @@ MEMBER_DASHBOARD = """
             </form>
         </div>
 
-        <!-- REQUEST LOAN -->
         <div class="card">
             <h2>Request a Loan</h2>
             <form method="POST" action="/member/apply_loan">
@@ -334,7 +353,7 @@ MEMBER_DASHBOARD = """
                     </div>
                     <div>
                         <label>Purpose</label>
-                        <input type="text" name="purpose" placeholder="e.g. Emergency, Stock" required>
+                        <input type="text" name="purpose" placeholder="e.g. Emergency" required>
                     </div>
                     <div>
                         <label>Repayment Duration (Months)</label>
@@ -345,7 +364,6 @@ MEMBER_DASHBOARD = """
             </form>
         </div>
 
-        <!-- YOUR PAYMENT CLAIMS HISTORY -->
         <div class="card">
             <h2>Your Payment/Deposit Submissions</h2>
             <table>
@@ -396,10 +414,9 @@ def login():
         password = request.form.get('password')
 
         # Check Admin
-        for uname, details in USERS.items():
-            if identity in (uname, details['email']) and details['password'] == password:
-                session['user'] = details
-                return redirect(url_for('admin_dashboard'))
+        if identity in (ADMIN_PROFILE['username'], ADMIN_PROFILE['email']) and ADMIN_PROFILE['password'] == password:
+            session['user'] = ADMIN_PROFILE
+            return redirect(url_for('admin_dashboard'))
 
         # Check Members
         for uname, details in MEMBERS.items():
@@ -419,7 +436,7 @@ def register():
     phone = request.form.get('phone')
     password = request.form.get('password')
 
-    if username in MEMBERS or username in USERS:
+    if username in MEMBERS or username == ADMIN_PROFILE['username']:
         return render_template_string(LOGIN_HTML, error="Username already exists!")
 
     MEMBERS[username] = {
@@ -428,7 +445,7 @@ def register():
         "email": email,
         "phone": phone,
         "password": password,
-        "balance": 0,  # STARTS AT ZERO
+        "balance": 0,
         "role": "Member"
     }
 
@@ -438,7 +455,38 @@ def register():
 def admin_dashboard():
     if 'user' not in session or session['user']['role'] != 'Admin':
         return redirect(url_for('login'))
-    return render_template_string(ADMIN_DASHBOARD, members=MEMBERS, payments=PAYMENTS, loans=LOANS)
+    msg = request.args.get('msg')
+    err = request.args.get('err')
+    return render_template_string(ADMIN_DASHBOARD, admin=ADMIN_PROFILE, members=MEMBERS, payments=PAYMENTS, loans=LOANS, msg=msg, err=err)
+
+@app.route('/admin/update_credentials', methods=['POST'])
+def update_credentials():
+    if 'user' not in session or session['user']['role'] != 'Admin':
+        return redirect(url_for('login'))
+
+    new_username = request.form.get('new_username').lower().strip()
+    new_password = request.form.get('new_password')
+
+    if new_username in MEMBERS:
+        return redirect(url_for('admin_dashboard', err="Username is already taken by a member!"))
+
+    ADMIN_PROFILE['username'] = new_username
+    if new_password:
+        ADMIN_PROFILE['password'] = new_password
+
+    session['user'] = ADMIN_PROFILE
+    return redirect(url_for('admin_dashboard', msg="Admin credentials updated successfully!"))
+
+@app.route('/admin/remove_member/<username>')
+def remove_member(username):
+    if 'user' not in session or session['user']['role'] != 'Admin':
+        return redirect(url_for('login'))
+
+    if username in MEMBERS:
+        del MEMBERS[username]
+        return redirect(url_for('admin_dashboard', msg=f"Member '{username}' removed successfully."))
+
+    return redirect(url_for('admin_dashboard', err="Member not found."))
 
 @app.route('/admin/confirm_payment/<int:pay_id>')
 def confirm_payment(pay_id):
@@ -448,7 +496,6 @@ def confirm_payment(pay_id):
     for p in PAYMENTS:
         if p['id'] == pay_id and p['status'] == 'Pending':
             p['status'] = 'Confirmed'
-            # Credit member's balance!
             uname = p['username']
             if uname in MEMBERS:
                 MEMBERS[uname]['balance'] += p['amount']
@@ -498,7 +545,11 @@ def member_dashboard():
         return redirect(url_for('login'))
 
     uname = session['user']['username']
-    current_member = MEMBERS.get(uname, session['user'])
+    if uname not in MEMBERS:
+        session.pop('user', None)
+        return redirect(url_for('login'))
+
+    current_member = MEMBERS[uname]
     user_payments = [p for p in PAYMENTS if p['username'] == uname]
 
     return render_template_string(MEMBER_DASHBOARD, member=current_member, user_payments=user_payments)
