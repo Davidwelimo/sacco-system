@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "sacco_zero_start_secret_key")
 
-# Database Configuration (Uses /tmp/sacco.db for write access on Render SQLite)
+# Database Configuration
 db_url = os.environ.get("DATABASE_URL", "sqlite:////tmp/sacco.db")
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -27,153 +27,10 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ==============================================================================
-# DATABASE MODELS
-# ==============================================================================
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    name = db.Column(db.String(120), nullable=False)
-    email = db.Column(db.String(120), nullable=False)
-    phone = db.Column(db.String(20), nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), default="Member") # "Admin" or "Member"
-    avatar = db.Column(db.String(200), nullable=True)
-    
-    # Financial Balances
-    weekly_savings = db.Column(db.Float, default=0.0)      # Total KES 50 weekly dues paid
-    monthly_savings = db.Column(db.Float, default=0.0)     # Total KES 200 monthly dues paid
-    emergency_savings = db.Column(db.Float, default=0.0)   # Excess money & reserves
-
-class WeeklyContribution(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False)
-    week_number = db.Column(db.Integer, nullable=False)    # Week 1 to 52
-    year = db.Column(db.Integer, nullable=False)
-    amount_paid = db.Column(db.Float, default=0.0)         # Target: KES 50
-    status = db.Column(db.String(20), default="Unpaid")    # Unpaid, Partial, Paid
-
-class MonthlyContribution(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False)
-    month_number = db.Column(db.Integer, nullable=False)   # Month 1 to 12
-    year = db.Column(db.Integer, nullable=False)
-    amount_paid = db.Column(db.Float, default=0.0)         # Target: KES 200
-    status = db.Column(db.String(20), default="Unpaid")    # Unpaid, Partial, Paid
-
-class Loan(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False)
-    member_name = db.Column(db.String(120), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    purpose = db.Column(db.String(200), nullable=False)
-    duration = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(20), default="Pending")
-
-class Payment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False)
-    member_name = db.Column(db.String(120), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    ref_code = db.Column(db.String(80), nullable=False)
-    status = db.Column(db.String(20), default="Pending")
-    date = db.Column(db.String(20), nullable=False)
-
-class TransferRequest(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    sender_username = db.Column(db.String(80), nullable=False)
-    recipient_username = db.Column(db.String(80), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default="Pending")   # Pending, Approved, Rejected
-    date = db.Column(db.String(20), nullable=False)
-
-class ResetRequest(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False)
-    member_name = db.Column(db.String(120), nullable=False)
-    phone = db.Column(db.String(20), nullable=False)
-    status = db.Column(db.String(20), default="Pending")
-    date = db.Column(db.String(20), nullable=False)
-
-# Initialize Database & Default Admin
-with app.app_context():
-    db.create_all()
-    if not User.query.filter_by(role="Admin").first():
-        admin = User(
-            username="admin",
-            name="SACCO Admin",
-            email="admin@sacco.com",
-            phone="0000000000",
-            password="admin123",
-            role="Admin"
-        )
-        db.session.add(admin)
-        db.session.commit()
-
-# Helper function to initialize 52 weeks and 12 months for a new member
-def initialize_member_schedule(username, year):
-    for week in range(1, 53):
-        if not WeeklyContribution.query.filter_by(username=username, week_number=week, year=year).first():
-            w = WeeklyContribution(username=username, week_number=week, year=year, amount_paid=0.0, status="Unpaid")
-            db.session.add(w)
-    for month in range(1, 13):
-        if not MonthlyContribution.query.filter_by(username=username, month_number=month, year=year).first():
-            m = MonthlyContribution(username=username, month_number=month, year=year, amount_paid=0.0, status="Unpaid")
-            db.session.add(m)
-    db.session.commit()
-
-# Allocation engine
-def process_member_deposit(user, deposit_amount):
-    remaining = deposit_amount
-    current_year = datetime.date.today().year
-
-    # Ensure schedules exist
-    initialize_member_schedule(user.username, current_year)
-
-    # 1. Fill Weekly Dues (KES 50 target per week)
-    unpaid_weeks = WeeklyContribution.query.filter_by(username=user.username, status="Unpaid")\
-                                           .order_by(WeeklyContribution.week_number.asc()).all()
-    for w in unpaid_weeks:
-        needed = 50.0 - w.amount_paid
-        if remaining >= needed:
-            remaining -= needed
-            w.amount_paid = 50.0
-            w.status = "Paid"
-            user.weekly_savings += needed
-        elif remaining > 0:
-            w.amount_paid += remaining
-            w.status = "Partial"
-            user.weekly_savings += remaining
-            remaining = 0
-            break
-
-    # 2. Fill Monthly Dues (KES 200 target per month)
-    if remaining > 0:
-        unpaid_months = MonthlyContribution.query.filter_by(username=user.username, status="Unpaid")\
-                                                 .order_by(MonthlyContribution.month_number.asc()).all()
-        for m in unpaid_months:
-            needed = 200.0 - m.amount_paid
-            if remaining >= needed:
-                remaining -= needed
-                m.amount_paid = 200.0
-                m.status = "Paid"
-                user.monthly_savings += needed
-            elif remaining > 0:
-                m.amount_paid += remaining
-                m.status = "Partial"
-                user.monthly_savings += remaining
-                remaining = 0
-                break
-
-    # 3. Excess goes into Emergency Savings
-    if remaining > 0:
-        user.emergency_savings += remaining
-
-# ==============================================================================
 # BASE STYLES & JS (LIGHT/DARK MODE)
 # ==============================================================================
 
-THEME_CSS = """
+THEME_CSS_CONTENT = """
 <style>
   :root { --bg: #f7fafc; --card: #ffffff; --text: #2d3748; --subtext: #4a5568; --border: #e2e8f0; --nav-bg: #2d3748; --nav-admin: #1a365d; --input-bg: #ffffff; }
   [data-theme="dark"] { --bg: #1a202c; --card: #2d3748; --text: #f7fafc; --subtext: #a0aec0; --border: #4a5568; --nav-bg: #0f172a; --nav-admin: #0f172a; --input-bg: #4a5568; }
@@ -216,6 +73,136 @@ THEME_CSS = """
 </script>
 """
 
+@app.context_processor
+def inject_theme():
+    return dict(theme_css=THEME_CSS_CONTENT)
+
+# ==============================================================================
+# DATABASE MODELS
+# ==============================================================================
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    role = db.Column(db.String(20), default="Member")
+    avatar = db.Column(db.String(200), nullable=True)
+    
+    weekly_savings = db.Column(db.Float, default=0.0)
+    monthly_savings = db.Column(db.Float, default=0.0)
+    emergency_savings = db.Column(db.Float, default=0.0)
+
+class WeeklyContribution(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    week_number = db.Column(db.Integer, nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    amount_paid = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(20), default="Unpaid")
+
+class MonthlyContribution(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    month_number = db.Column(db.Integer, nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    amount_paid = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(20), default="Unpaid")
+
+class Payment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    member_name = db.Column(db.String(120), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    ref_code = db.Column(db.String(80), nullable=False)
+    status = db.Column(db.String(20), default="Pending")
+    date = db.Column(db.String(20), nullable=False)
+
+class TransferRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_username = db.Column(db.String(80), nullable=False)
+    recipient_username = db.Column(db.String(80), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(20), default="Pending")
+    date = db.Column(db.String(20), nullable=False)
+
+class ResetRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    member_name = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(20), default="Pending")
+    date = db.Column(db.String(20), nullable=False)
+
+with app.app_context():
+    db.create_all()
+    if not User.query.filter_by(role="Admin").first():
+        admin = User(
+            username="admin",
+            name="SACCO Admin",
+            email="admin@sacco.com",
+            phone="0000000000",
+            password="admin123",
+            role="Admin"
+        )
+        db.session.add(admin)
+        db.session.commit()
+
+def initialize_member_schedule(username, year):
+    for week in range(1, 53):
+        if not WeeklyContribution.query.filter_by(username=username, week_number=week, year=year).first():
+            w = WeeklyContribution(username=username, week_number=week, year=year, amount_paid=0.0, status="Unpaid")
+            db.session.add(w)
+    for month in range(1, 13):
+        if not MonthlyContribution.query.filter_by(username=username, month_number=month, year=year).first():
+            m = MonthlyContribution(username=username, month_number=month, year=year, amount_paid=0.0, status="Unpaid")
+            db.session.add(m)
+    db.session.commit()
+
+def process_member_deposit(user, deposit_amount):
+    remaining = deposit_amount
+    current_year = datetime.date.today().year
+
+    initialize_member_schedule(user.username, current_year)
+
+    unpaid_weeks = WeeklyContribution.query.filter_by(username=user.username, status="Unpaid")\
+                                           .order_by(WeeklyContribution.week_number.asc()).all()
+    for w in unpaid_weeks:
+        needed = 50.0 - w.amount_paid
+        if remaining >= needed:
+            remaining -= needed
+            w.amount_paid = 50.0
+            w.status = "Paid"
+            user.weekly_savings += needed
+        elif remaining > 0:
+            w.amount_paid += remaining
+            w.status = "Partial"
+            user.weekly_savings += remaining
+            remaining = 0
+            break
+
+    if remaining > 0:
+        unpaid_months = MonthlyContribution.query.filter_by(username=user.username, status="Unpaid")\
+                                                 .order_by(MonthlyContribution.month_number.asc()).all()
+        for m in unpaid_months:
+            needed = 200.0 - m.amount_paid
+            if remaining >= needed:
+                remaining -= needed
+                m.amount_paid = 200.0
+                m.status = "Paid"
+                user.monthly_savings += needed
+            elif remaining > 0:
+                m.amount_paid += remaining
+                m.status = "Partial"
+                user.monthly_savings += remaining
+                remaining = 0
+                break
+
+    if remaining > 0:
+        user.emergency_savings += remaining
+
 # ==============================================================================
 # HTML TEMPLATES
 # ==============================================================================
@@ -226,7 +213,7 @@ LOGIN_HTML = """
 <head>
   <meta charset="UTF-8">
   <title>SACCO Portal - Login & Register</title>
-  {% theme_css %}
+  {{ theme_css | safe }}
 </head>
 <body style="display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;">
   <div class="box card" style="width: 360px;">
@@ -321,7 +308,7 @@ ADMIN_DASHBOARD = """
 <head>
   <meta charset="UTF-8">
   <title>SACCO Admin Control Center</title>
-  {% theme_css %}
+  {{ theme_css | safe }}
 </head>
 <body>
   <div class="navbar admin-nav">
@@ -488,7 +475,7 @@ MEMBER_DASHBOARD = """
 <head>
   <meta charset="UTF-8">
   <title>Member Portal - SACCO</title>
-  {% theme_css %}
+  {{ theme_css | safe }}
 </head>
 <body>
   <div class="navbar">
@@ -618,7 +605,7 @@ MEMBER_DASHBOARD = """
 """
 
 # ==============================================================================
-# ROUTES & LOGIC
+# ROUTES
 # ==============================================================================
 
 @app.route('/uploads/<filename>')
