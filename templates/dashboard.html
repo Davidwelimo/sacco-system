@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Member Dashboard</title>
+    <title>RICH MERCHANTS - Member Dashboard</title>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: #fff; padding: 20px; }
         .card { background: #1e1e1e; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
@@ -17,9 +17,16 @@
         .btn-danger:hover { background: #a71d2a; }
         .flash { background: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #007bff; }
         input, select { padding: 8px; margin-right: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        .logo-header { text-align: center; margin-bottom: 25px; }
+        .logo-header img { width: 70px; height: 70px; object-fit: cover; border-radius: 50%; border: 2px solid #28a745; margin-bottom: 8px; }
     </style>
 </head>
 <body>
+    <div class="logo-header">
+        <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=150&auto=format&fit=crop&q=80" alt="Real Estate Logo">
+        <h2 style="margin: 0; color: #fff; letter-spacing: 1px;">RICH MERCHANTS</h2>
+    </div>
+
     <div class="card">
         <h2>Welcome, {{ user.username }}</h2>
         <div style="margin-bottom: 15px;">
@@ -137,7 +144,7 @@
                 {% for m in members %}
                 <option value="{{ m.id }}">{{ m.username }}</option>
                 {% endfor %}
-         </select>
+           </select>
             <input type="number" step="0.01" name="amount" placeholder="Amount" required>
             <button type="submit" class="btn">Request Transfer</button>
         </form>

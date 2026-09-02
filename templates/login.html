@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SACCO Login</title>
+    <title>RICH MERCHANTS - Login</title>
     <style>
         :root { --bg: #f4f6f9; --card: #ffffff; --text: #333333; --border: #cccccc; }
         body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --border: #444444; }
@@ -15,12 +15,18 @@
         .flash { color: red; font-size: 0.85em; text-align: center; margin-bottom: 10px; }
         .links { text-align: center; margin-top: 15px; font-size: 0.85em; }
         .links a { color: #007bff; text-decoration: none; }
+        .logo-container { text-align: center; margin-bottom: 15px; clear: both; }
+        .logo-container img { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid #28a745; margin-bottom: 5px; }
     </style>
 </head>
 <body>
     <div class="card">
         <button type="button" class="toggle-btn" onclick="toggleTheme()">🌓 Theme</button>
-        <h2 style="clear:both;">SACCO Portal</h2>
+        <div style="clear:both;"></div>
+        <div class="logo-container">
+            <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=150&auto=format&fit=crop&q=80" alt="Real Estate Logo">
+            <h2 style="margin: 0; font-size: 1.4em; letter-spacing: 0.5px;">RICH MERCHANTS</h2>
+        </div>
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
