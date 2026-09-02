@@ -53,7 +53,6 @@ class EmergencyTransfer(db.Model):
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
 
-# Automatically create tables and default admin on startup (placed after models are defined)
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
@@ -155,7 +154,7 @@ def dashboard():
     contributions = Contribution.query.filter_by(user_id=user.id).all()
     loans = Loan.query.filter_by(user_id=user.id).all()
     transfers = EmergencyTransfer.query.filter((EmergencyTransfer.sender_id == user.id) | (EmergencyTransfer.recipient_id == user.id)).all()
-    members = User.query.all()
+    members = User.query.filter_by(is_admin=False).all()
     return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, transfers=transfers, members=members)
 
 @app.route('/upload_profile_pic', methods=['POST'])
@@ -231,8 +230,8 @@ def transfer_emergency():
         return redirect(url_for('dashboard'))
         
     recipient = User.query.get(recipient_id)
-    if not recipient:
-        flash('Recipient not found.')
+    if not recipient or recipient.is_admin:
+        flash('Recipient not found or invalid.')
         return redirect(url_for('dashboard'))
         
     if user.emergency_balance >= transfer_amt:
@@ -253,7 +252,7 @@ def admin_dashboard():
     pending_contribs = Contribution.query.filter_by(status='Pending').all()
     pending_loans = Loan.query.filter_by(status='Pending').all()
     pending_transfers = EmergencyTransfer.query.filter_by(status='Pending').all()
-    members = User.query.all()
+    members = User.query.filter_by(is_admin=False).all()
     return render_template('admin.html', pending_contribs=pending_contribs, pending_loans=pending_loans, pending_transfers=pending_transfers, members=members)
 
 @app.route('/admin/approve/contrib/<int:contrib_id>')
