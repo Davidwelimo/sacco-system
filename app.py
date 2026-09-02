@@ -428,6 +428,7 @@ def issue_otp(user_id):
     target_user = User.query.get_or_404(user_id)
     otp = str(random.randint(100000, 999999))
     target_user.reset_otp = otp
+    target_user.user_reset = True
     db.session.commit()
     flash(f"OTP generated for {target_user.username}: {otp}")
     return redirect(url_for('admin_dashboard'))
