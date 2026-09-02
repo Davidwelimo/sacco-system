@@ -15,6 +15,15 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy(app)
 
+# Automatically create database tables and default admin account on startup
+with app.app_context():
+    db.create_all()
+    if not User.query.filter_by(username='admin').first():
+        hashed_pw = generate_password_hash('admin123', method='scrypt')
+        default_admin = User(username='admin', password=hashed_pw, is_admin=True)
+        db.session.add(default_admin)
+        db.session.commit()
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -368,11 +377,4 @@ def issue_otp(user_id):
     return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        if not User.query.filter_by(username='admin').first():
-            hashed_pw = generate_password_hash('admin123', method='scrypt')
-            default_admin = User(username='admin', password=hashed_pw, is_admin=True)
-            db.session.add(default_admin)
-            db.session.commit()
     app.run(debug=True)
