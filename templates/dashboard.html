@@ -55,13 +55,30 @@
         <form action="{{ url_for('contribute') }}" method="POST">
             <label>Contribution Type:</label>
             <select name="type" required>
-                <option value="weekly">Weekly (50 KES)</option>
-                <option value="monthly">Monthly (200 KES)</option>
-                <option value="meeting">Meeting (100 KES)</option>
+                <option value="weekly">Weekly (Standard: 50 KES)</option>
+                <option value="monthly">Monthly (Standard: 200 KES)</option>
+                <option value="meeting">Meeting (Standard: 100 KES)</option>
             </select>
             <label>Amount (KES):</label>
-            <input type="number" step="0.01" name="amount" placeholder="Amount">
+            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
             <button type="submit" class="btn">Pay Contribution</button>
+        </form>
+        <p style="font-size: 0.85em; color: #aaa; margin-top: 8px;">*Note: Amounts exceeding 50 KES (weekly), 200 KES (monthly), or 100 KES (meeting) will automatically be routed to your Emergency Fund.</p>
+    </div>
+
+    <!-- Pay Contribution Using Emergency Fund -->
+    <div class="card">
+        <h3>Pay Contribution Using Emergency Fund</h3>
+        <form action="{{ url_for('pay_with_emergency') }}" method="POST">
+            <label>Contribution Type:</label>
+            <select name="type" required>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="meeting">Meeting</option>
+            </select>
+            <label>Amount (KES):</label>
+            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
+            <button type="submit" class="btn">Use Emergency Fund</button>
         </form>
     </div>
 
@@ -120,7 +137,7 @@
                 {% for m in members %}
                 <option value="{{ m.id }}">{{ m.username }}</option>
                 {% endfor %}
-            </select>
+         </select>
             <input type="number" step="0.01" name="amount" placeholder="Amount" required>
             <button type="submit" class="btn">Request Transfer</button>
         </form>

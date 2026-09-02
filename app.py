@@ -192,6 +192,35 @@ def contribute():
     flash('Contribution submitted for admin approval.')
     return redirect(url_for('dashboard'))
 
+@app.route('/pay_with_emergency', methods=['POST'])
+@login_required
+def pay_with_emergency():
+    user = User.query.get(session['user_id'])
+    c_type = request.form.get('type')
+    amount_str = request.form.get('amount')
+    
+    try:
+        amount = float(amount_str)
+        if amount <= 0:
+            raise ValueError()
+    except (ValueError, TypeError):
+        flash('Invalid amount entered.')
+        return redirect(url_for('dashboard'))
+        
+    if user.emergency_balance >= amount:
+        user.emergency_balance -= amount
+        if c_type == 'weekly':
+            user.weekly_balance += amount
+        elif c_type == 'monthly':
+            user.monthly_balance += amount
+        elif c_type == 'meeting':
+            user.meeting_balance += amount
+        db.session.commit()
+        flash('Contribution successfully paid using your emergency fund!')
+    else:
+        flash('Insufficient emergency fund balance.')
+    return redirect(url_for('dashboard'))
+
 @app.route('/request_loan', methods=['POST'])
 @login_required
 def request_loan():
@@ -284,12 +313,23 @@ def approve_contribution(contrib_id):
     contrib.status = 'Approved'
     member = User.query.get(contrib.user_id)
     
+    # Threshold rules: Weekly > 50, Monthly > 200, Meeting > 100 excess goes to emergency
+    thresholds = {'weekly': 50, 'monthly': 200, 'meeting': 100}
+    limit = thresholds.get(contrib.type, 0)
+    
+    if contrib.amount > limit:
+        base_amount = limit
+        extra_amount = contrib.amount - limit
+        member.emergency_balance += extra_amount
+    else:
+        base_amount = contrib.amount
+        
     if contrib.type == 'weekly':
-        member.weekly_balance += contrib.amount
+        member.weekly_balance += base_amount
     elif contrib.type == 'monthly':
-        member.monthly_balance += contrib.amount
+        member.monthly_balance += base_amount
     elif contrib.type == 'meeting':
-        member.meeting_balance += contrib.amount
+        member.meeting_balance += base_amount
         
     db.session.commit()
     flash('Contribution approved successfully!')
