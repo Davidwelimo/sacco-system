@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import random
 from functools import wraps
+from sqlalchemy import func
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -246,14 +247,36 @@ def transfer_emergency():
 @app.route('/admin/dashboard')
 @login_required
 def admin_dashboard():
-    user = User.query.get(session['user_id'])
-    if not user.is_admin:
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user.is_admin:
         return redirect(url_for('dashboard'))
+    
     pending_contribs = Contribution.query.filter_by(status='Pending').all()
     pending_loans = Loan.query.filter_by(status='Pending').all()
     pending_transfers = EmergencyTransfer.query.filter_by(status='Pending').all()
     members = User.query.filter_by(is_admin=False).all()
-    return render_template('admin.html', pending_contribs=pending_contribs, pending_loans=pending_loans, pending_transfers=pending_transfers, members=members)
+
+    # Financial Calculations for Admin Dashboard
+    total_weekly_contributions = db.session.query(func.sum(User.weekly_balance)).scalar() or 0.0
+    total_monthly_contributions = db.session.query(func.sum(User.monthly_balance)).scalar() or 0.0
+    total_meeting_contributions = db.session.query(func.sum(User.meeting_balance)).scalar() or 0.0
+    
+    # Main SACCO account total (sum of all member balances across weekly, monthly, and meeting)
+    main_sacco_account_total = total_weekly_contributions + total_monthly_contributions + total_meeting_contributions
+
+    # Total approved loans given out
+    total_loans_given = db.session.query(func.sum(Loan.amount)).filter_by(status='Approved').scalar() or 0.0
+
+    return render_template('admin.html', 
+                           pending_contribs=pending_contribs, 
+                           pending_loans=pending_loans, 
+                           pending_transfers=pending_transfers, 
+                           members=members,
+                           total_weekly_contributions=total_weekly_contributions,
+                           total_monthly_contributions=total_monthly_contributions,
+                           total_meeting_contributions=total_meeting_contributions,
+                           main_sacco_account_total=main_sacco_account_total,
+                           total_loans_given=total_loans_given)
 
 @app.route('/admin/approve/contrib/<int:contrib_id>')
 @login_required
