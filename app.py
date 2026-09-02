@@ -128,7 +128,7 @@ def forgot_password():
         return redirect(url_for('forgot_password'))
     return render_template('reset_otp.html')
 
-@app.route('/reset_password', methods=['GET', 'POST'])
+@app.route('/reset_password_otp', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -313,7 +313,6 @@ def approve_contribution(contrib_id):
     contrib.status = 'Approved'
     member = User.query.get(contrib.user_id)
     
-    # Threshold rules: Weekly > 50, Monthly > 200, Meeting > 100 excess goes to emergency
     thresholds = {'weekly': 50, 'monthly': 200, 'meeting': 100}
     limit = thresholds.get(contrib.type, 0)
     
