@@ -15,15 +15,6 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy(app)
 
-# Automatically create database tables and default admin account on startup
-with app.app_context():
-    db.create_all()
-    if not User.query.filter_by(username='admin').first():
-        hashed_pw = generate_password_hash('admin123', method='scrypt')
-        default_admin = User(username='admin', password=hashed_pw, is_admin=True)
-        db.session.add(default_admin)
-        db.session.commit()
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -61,6 +52,15 @@ class EmergencyTransfer(db.Model):
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
+
+# Automatically create tables and default admin on startup (placed after models are defined)
+with app.app_context():
+    db.create_all()
+    if not User.query.filter_by(username='admin').first():
+        hashed_pw = generate_password_hash('admin123', method='scrypt')
+        default_admin = User(username='admin', password=hashed_pw, is_admin=True)
+        db.session.add(default_admin)
+        db.session.commit()
 
 def login_required(f):
     @wraps(f)
