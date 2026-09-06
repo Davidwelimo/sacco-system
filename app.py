@@ -135,7 +135,7 @@ def login():
             session['user_id'] = user.id
             if user.role == 'System Admin':
                 return redirect(url_for('admin'))
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('select_role'))
         flash('Invalid username or password.')
     return render_template('login.html')
 
@@ -161,14 +161,34 @@ def register():
             new_user = User(username=username, email=email, phone_number=phone_number, password=hashed_pw, role=role)
             db.session.add(new_user)
             db.session.commit()
-            flash('Registration successful! Please log in.')
-            return redirect(url_for('login'))
+            session['user_id'] = new_user.id
+            flash('Registration successful! Please select your role.')
+            return redirect(url_for('select_role'))
         except Exception as e:
             db.session.rollback()
             flash('An error occurred during registration. Username or email may already be taken.')
             return redirect(url_for('register'))
 
     return render_template('register.html')
+
+@app.route('/select_role', methods=['GET', 'POST'])
+@login_required
+def select_role():
+    user = User.query.get(session['user_id'])
+    if user.role == 'System Admin':
+        return redirect(url_for('admin'))
+        
+    if request.method == 'POST':
+        selected_role = request.form.get('role')
+        valid_roles = ['Chairman and Finance', 'ICT Director', 'HR and Secretary Manager', 'Member']
+        
+        if selected_role in valid_roles:
+            user.role = selected_role
+            db.session.commit()
+            flash('Role updated successfully!')
+            return redirect(url_for('dashboard'))
+            
+    return render_template('select_role.html')
 
 @app.route('/reset_password_otp', methods=['GET', 'POST'])
 def reset_password_otp():
