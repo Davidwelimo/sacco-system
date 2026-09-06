@@ -65,6 +65,11 @@
                 <option value="monthly">Monthly (Standard: 200 KES)</option>
                 <option value="meeting">Meeting (Standard: 100 KES)</option>
             </select>
+            <label>Payment Method:</label>
+            <select name="payment_method" required>
+                <option value="Mpesa">M-Pesa</option>
+                <option value="Cash">Cash</option>
+            </select>
             <label>Amount (KES):</label>
             <input type="number" step="0.01" name="amount" placeholder="Amount" required>
             <button type="submit" class="btn">Pay Contribution</button>
@@ -117,13 +122,30 @@
         </table>
     </div>
 
-    <!-- Feedback -->
+    <!-- Feedback & Notifications -->
     <div class="card">
-        <h3>Submit Feedback</h3>
+        <h3>Submit Feedback & Admin Notifications</h3>
         <form action="{{ url_for('submit_feedback') }}" method="POST">
-            <textarea name="message" placeholder="Type your feedback or comments here..." rows="3" required></textarea>
+            <textarea name="message" placeholder="Type your feedback here..." rows="3" required></textarea>
             <button type="submit" class="btn">Send Feedback</button>
         </form>
+        <h4 style="margin-top: 15px;">Your Feedback History & Admin Replies</h4>
+        <table>
+            <tr>
+                <th>Your Message</th>
+                <th>Admin Reply</th>
+                <th>Date</th>
+            </tr>
+            {% for f in feedbacks %}
+            <tr>
+                <td>{{ f.message }}</td>
+                <td style="color: {% if f.admin_reply %}#28a745{% else %}#ffc107{% endif %};">{{ f.admin_reply or 'Pending admin response...' }}</td>
+                <td>{{ f.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">You haven't submitted any feedback yet.</td></tr>
+            {% endfor %}
+        </table>
     </div>
 </body>
 </html>

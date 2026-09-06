@@ -63,6 +63,7 @@ class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
+    admin_reply = db.Column(db.Text, nullable=True)
     date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
@@ -135,8 +136,9 @@ def dashboard():
         return redirect(url_for('admin'))
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
     loans = Loan.query.filter_by(user_id=user.id).all()
+    feedbacks = Feedback.query.filter_by(user_id=user.id).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.filter(User.id != user.id).all()
-    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, members=members)
+    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, feedbacks=feedbacks, members=members)
 
 @app.route('/contribute', methods=['POST'])
 @login_required
@@ -243,6 +245,18 @@ def approve_loan(loan_id):
     loan.status = 'Approved'
     db.session.commit()
     flash('Loan approved successfully.')
+    return redirect(url_for('admin'))
+
+@app.route('/admin_reply_feedback/<int:feedback_id>', methods=['POST'])
+@login_required
+def admin_reply_feedback(feedback_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.role != 'System Admin':
+        return redirect(url_for('dashboard'))
+    fb = Feedback.query.get_or_404(feedback_id)
+    fb.admin_reply = request.form.get('admin_reply')
+    db.session.commit()
+    flash('Reply sent to member successfully.')
     return redirect(url_for('admin'))
 
 @app.route('/issue_otp/<int:user_id>', methods=['POST'])
