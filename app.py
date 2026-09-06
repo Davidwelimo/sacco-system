@@ -406,7 +406,7 @@ def admin_reply_feedback(feedback_id):
 @login_required
 def issue_otp(user_id):
     target = User.query.get_or_404(user_id)
-    otp = str(random.randint(100000, 999999))  # Updated to 6 digits to match reset_otp.html
+    otp = str(random.randint(100000, 999999))
     target.reset_otp = otp
     target.user_reset = True
     db.session.commit()
@@ -435,4 +435,3 @@ def admin():
 
 if __name__ == '__main__':
     app.run(debug=True)
-    

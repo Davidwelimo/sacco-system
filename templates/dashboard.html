@@ -31,10 +31,11 @@
         .badge { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; border: 1px solid #bae6fd; }
 
         /* Metrics Row */
-        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
         .metric-card { background: var(--card-bg); border-radius: 12px; padding: 20px 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid var(--border); border-top: 4px solid #0284c7; }
         .metric-card.green { border-top-color: #16a34a; }
         .metric-card.red { border-top-color: #dc2626; }
+        .metric-card.orange { border-top-color: #d97706; }
         .metric-title { font-size: 0.75em; color: var(--text-muted); font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
         .metric-value { font-size: 1.5em; font-weight: bold; margin: 0; }
 
@@ -109,6 +110,10 @@
                     <div class="metric-title">Savings Balance</div>
                     <p class="metric-value">KES {{ "%.2f"|format(user.savings_balance) }}</p>
                 </div>
+                <div class="metric-card orange">
+                    <div class="metric-title">Loan Repayment</div>
+                    <p class="metric-value">KES {{ "%.2f"|format(user.loan_repayment_balance) }}</p>
+                </div>
                 <div class="metric-card red">
                     <div class="metric-title">Collateral Balance</div>
                     <p class="metric-value">KES {{ "%.2f"|format(user.collateral_balance) }}</p>
@@ -125,6 +130,11 @@
         <div id="contributions" class="tab-content">
             <div class="card">
                 <h3>Make Contribution</h3>
+                {% if is_late %}
+                    <p style="color: #dc2626; font-size: 0.9em; font-weight: bold; margin-bottom: 12px;">Deadline passed! Minimum weekly contribution is {{ min_amount }} KES (100 KES + 20 KES Collateral).</p>
+                {% else %}
+                    <p style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 12px;">Minimum weekly contribution is {{ min_amount }} KES.</p>
+                {% endif %}
                 <form method="POST" action="/contribute">
                     <label>Account Type</label>
                     <select name="account_type">
@@ -182,6 +192,30 @@
                     <input type="number" step="0.01" name="amount" placeholder="Enter requested amount" required>
                     <button type="submit" class="btn" style="background: #16a34a; margin-top: 15px;">Submit Loan Request</button>
                 </form>
+
+                <h3 style="margin-top: 25px;">My Loan History & Repayments</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date Requested</th>
+                            <th>Amount (KES)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loan in loans %}
+                        <tr>
+                            <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>KES {{ loan.amount }}</td>
+                            <td><span style="font-weight: bold; color: {% if loan.status == 'Approved' %}#16a34a{% elif loan.status == 'Declined' %}#dc2626{% else %}#d97706{% endif %};">{{ loan.status }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align:center; color: var(--text-muted);">No loan history found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -194,6 +228,20 @@
                     <textarea name="message" rows="4" placeholder="Type your issue or feedback here..." required></textarea>
                     <button type="submit" class="btn">Send Message</button>
                 </form>
+
+                <ul style="margin-top: 20px; list-style: none; padding: 0;">
+                    {% for fb in feedbacks %}
+                    <li style="margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <p style="margin: 0 0 5px 0;"><strong>You:</strong> {{ fb.message }}</p>
+                        {% if fb.admin_reply %}
+                            <p style="color: #16a34a; margin: 0 0 5px 0;"><strong>Admin Reply:</strong> {{ fb.admin_reply }}</p>
+                        {% endif %}
+                        <form action="{{ url_for('delete_feedback', feedback_id=fb.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">Delete</button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
     </div>
