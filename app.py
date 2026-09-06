@@ -81,7 +81,7 @@ with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
         hashed_pw = generate_password_hash('admin123', method='scrypt')
-        default_admin = User(username='admin', email='admin@sacco.com', phone_number='0700000000', role='System Admin', password=hashed_pw, is_admin=True)
+        default_admin = User(username='admin', email='admin@sacco.com', phone_number='0700000000', role='System Admin', password=hashed_pw)
         db.session.add(default_admin)
         db.session.commit()
 
@@ -169,7 +169,6 @@ def contribute():
 
     base = 50.0 if ctype == 'weekly' else (200.0 if ctype == 'monthly' else 100.0)
     base_paid = min(amount, base)
-    extra_emergency = max(0.0, amount - base)
 
     new_contrib = Contribution(
         user_id=user.id,
@@ -278,6 +277,17 @@ def update_settings():
         db.session.commit()
         flash('Profile picture updated successfully!')
     return redirect(url_for('dashboard'))
+
+@app.route('/issue_otp/<int:user_id>', methods=['POST'])
+@login_required
+def issue_otp(user_id):
+    target_user = User.query.get_or_404(user_id)
+    otp = str(random.randint(1000, 9999))
+    target_user.reset_otp = otp
+    target_user.user_reset = True
+    db.session.commit()
+    flash(f'OTP generated successfully for {target_user.username}: {otp}')
+    return redirect(url_for('admin'))
 
 @app.route('/admin')
 @login_required
