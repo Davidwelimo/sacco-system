@@ -36,11 +36,9 @@
             <input type="file" name="profile_pic" required style="width: auto;">
             <button type="submit" class="btn">Update Picture</button>
         </form>
-        <h3>Your Savings Balances:</h3>
+        <h3>Your Savings Balance:</h3>
         <ul>
-            <li>Weekly Savings: <strong>{{ user.weekly_balance }} KES</strong></li>
-            <li>Monthly Savings: <strong>{{ user.monthly_balance }} KES</strong></li>
-            <li>Meeting Savings: <strong>{{ user.meeting_balance }} KES</strong></li>
+            <li>Weekly Savings Balance: <strong>{{ user.weekly_balance }} KES</strong></li>
         </ul>
         <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
     </div>
@@ -57,42 +55,37 @@
 
     <!-- Make Contribution -->
     <div class="card">
-        <h3>Make Contribution</h3>
+        <h3>Make Weekly Contribution (100 KES)</h3>
         <form action="{{ url_for('contribute') }}" method="POST">
-            <label>Contribution Type:</label>
-            <select name="type" required>
-                <option value="weekly">Weekly (Standard: 50 KES)</option>
-                <option value="monthly">Monthly (Standard: 200 KES)</option>
-                <option value="meeting">Meeting (Standard: 100 KES)</option>
-            </select>
             <label>Payment Method:</label>
             <select name="payment_method" required>
                 <option value="Mpesa">M-Pesa</option>
                 <option value="Cash">Cash</option>
             </select>
-            <label>Amount (KES):</label>
-            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-            <button type="submit" class="btn">Pay Contribution</button>
+            <p style="margin: 10px 0; color: #aaa;">Amount: <strong>100 KES</strong></p>
+            <button type="submit" class="btn">Pay Weekly Contribution</button>
         </form>
     </div>
 
     <!-- Contribution Statuses -->
     <div class="card">
-        <h3>Your Contribution Statuses</h3>
+        <h3>Your Contribution History</h3>
         <table>
             <tr>
-                <th>Type</th>
                 <th>Amount</th>
+                <th>Method</th>
                 <th>Status</th>
+                <th>Date</th>
             </tr>
             {% for c in contributions %}
             <tr>
-                <td>{{ c.type | capitalize }}</td>
                 <td>{{ c.amount }} KES</td>
+                <td>{{ c.payment_method }}</td>
                 <td style="color: {% if c.status == 'Approved' %}#28a745{% elif c.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ c.status }}</td>
+                <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="3">No contributions made yet.</td></tr>
+            <tr><td colspan="4">No contributions made yet.</td></tr>
             {% endfor %}
         </table>
     </div>

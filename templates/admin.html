@@ -11,12 +11,14 @@
         th { background: #2a2a2a; }
         a { color: #4da6ff; text-decoration: none; }
         a:hover { text-decoration: underline; }
-        .btn { padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; display: inline-block; }
+        .btn { padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; display: inline-block; margin-right: 3px; }
         .btn:hover { background: #0056b3; }
         .btn-danger { background: #dc3545; }
         .btn-danger:hover { background: #a71d2a; }
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
+        .btn-warning { background: #ffc107; color: #000; }
+        .btn-warning:hover { background: #e0a800; }
         .flash { background: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #007bff; }
         input[type="text"] { padding: 6px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; width: 50%; margin-right: 5px; }
     </style>
@@ -37,29 +39,37 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Pending Contributions -->
+    <!-- Contributions Management -->
     <div class="card">
-        <h3>Pending Contributions Approvals</h3>
+        <h3>All Member Contributions (Weekly - 100 KES)</h3>
         <table>
             <tr>
                 <th>Member</th>
-                <th>Type</th>
                 <th>Amount</th>
-                <th>Action</th>
+                <th>Status</th>
+                <th>Actions</th>
             </tr>
-            {% for c in pending_contribs %}
+            {% for c in all_contribs %}
             <tr>
                 <td>{{ c.user.username }}</td>
-                <td>{{ c.type | capitalize }}</td>
                 <td>{{ c.amount }} KES</td>
+                <td style="color: {% if c.status == 'Approved' %}#28a745{% elif c.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ c.status }}</td>
                 <td>
+                    {% if c.status == 'Pending' %}
                     <form action="{{ url_for('approve_contribution', contrib_id=c.id) }}" method="POST" style="display:inline;">
                         <button type="submit" class="btn btn-success">Approve</button>
+                    </form>
+                    <form action="{{ url_for('reject_contribution', contrib_id=c.id) }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-warning">Reject</button>
+                    </form>
+                    {% endif %}
+                    <form action="{{ url_for('delete_contribution', contrib_id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Permanently remove this contribution record?');">
+                        <button type="submit" class="btn btn-danger">Remove</button>
                     </form>
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="4">No pending contributions.</td></tr>
+            <tr><td colspan="4">No contributions found.</td></tr>
             {% endfor %}
         </table>
     </div>
@@ -128,9 +138,7 @@
         <table>
             <tr>
                 <th>Username</th>
-                <th>Weekly</th>
-                <th>Monthly</th>
-                <th>Meeting</th>
+                <th>Weekly Balance</th>
                 <th>Actions</th>
             </tr>
             {% for m in members %}
@@ -138,8 +146,6 @@
             <tr>
                 <td>{{ m.username }}</td>
                 <td>{{ m.weekly_balance }} KES</td>
-                <td>{{ m.monthly_balance }} KES</td>
-                <td>{{ m.meeting_balance }} KES</td>
                 <td>
                     <form action="{{ url_for('issue_otp', user_id=m.id) }}" method="POST" style="display:inline;">
                         <button type="submit" class="btn">Issue OTP</button>

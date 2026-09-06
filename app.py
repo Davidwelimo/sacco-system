@@ -27,10 +27,7 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(50), default='Member')
     profile_pic = db.Column(db.String(200), default='default.png')
-    mandatory_balance = db.Column(db.Float, default=0.0)
     weekly_balance = db.Column(db.Float, default=0.0)
-    monthly_balance = db.Column(db.Float, default=0.0)
-    meeting_balance = db.Column(db.Float, default=0.0)
     user_reset = db.Column(db.Boolean, default=False)
     reset_otp = db.Column(db.String(10), nullable=True)
     
@@ -42,11 +39,8 @@ class Contribution(db.Model):
     __tablename__ = 'contributions'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    type = db.Column(db.String(50), nullable=False)
     payment_method = db.Column(db.String(50), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    base_paid = db.Column(db.Float, default=0.0)
-    penalty_paid = db.Column(db.Float, default=0.0)
+    amount = db.Column(db.Float, nullable=False, default=100.0)
     status = db.Column(db.String(50), default='Pending')
     date_made = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -147,29 +141,16 @@ def dashboard():
 def contribute():
     user = User.query.get(session['user_id'])
     payment_method = request.form.get('payment_method', 'Mpesa')
-    ctype = request.form.get('type')
-    try:
-        amount = float(request.form.get('amount'))
-        if amount <= 0:
-            raise ValueError()
-    except (ValueError, TypeError):
-        flash('Invalid amount entered.')
-        return redirect(url_for('dashboard'))
-
-    base = 50.0 if ctype == 'weekly' else (200.0 if ctype == 'monthly' else 100.0)
-    base_paid = min(amount, base)
-
+    
     new_contrib = Contribution(
         user_id=user.id,
-        type=ctype,
         payment_method=payment_method,
-        amount=amount,
-        base_paid=base_paid,
+        amount=100.0,
         status='Pending'
     )
     db.session.add(new_contrib)
     db.session.commit()
-    flash('Contribution submitted for admin approval.')
+    flash('Weekly contribution of 100 KES submitted for admin approval.')
     return redirect(url_for('dashboard'))
 
 @app.route('/request_loan', methods=['POST'])
@@ -246,19 +227,37 @@ def approve_contribution(contrib_id):
     if not admin_user or admin_user.role != 'System Admin':
         return redirect(url_for('dashboard'))
     contrib = Contribution.query.get_or_404(contrib_id)
-    contrib.status = 'Approved'
-    
-    member = User.query.get(contrib.user_id)
-    if member:
-        if contrib.type == 'weekly':
+    if contrib.status != 'Approved':
+        contrib.status = 'Approved'
+        member = User.query.get(contrib.user_id)
+        if member:
             member.weekly_balance += contrib.amount
-        elif contrib.type == 'monthly':
-            member.monthly_balance += contrib.amount
-        elif contrib.type == 'meeting':
-            member.meeting_balance += contrib.amount
+        db.session.commit()
+        flash('Contribution approved successfully.')
+    return redirect(url_for('admin'))
 
+@app.route('/reject_contribution/<int:contrib_id>', methods=['POST'])
+@login_required
+def reject_contribution(contrib_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.role != 'System Admin':
+        return redirect(url_for('dashboard'))
+    contrib = Contribution.query.get_or_404(contrib_id)
+    contrib.status = 'Declined'
     db.session.commit()
-    flash('Contribution approved successfully.')
+    flash('Contribution rejected.')
+    return redirect(url_for('admin'))
+
+@app.route('/delete_contribution/<int:contrib_id>', methods=['POST'])
+@login_required
+def delete_contribution(contrib_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.role != 'System Admin':
+        return redirect(url_for('dashboard'))
+    contrib = Contribution.query.get_or_404(contrib_id)
+    db.session.delete(contrib)
+    db.session.commit()
+    flash('Contribution request removed successfully.')
     return redirect(url_for('admin'))
 
 @app.route('/approve_loan/<int:loan_id>', methods=['POST'])
@@ -315,10 +314,11 @@ def admin():
     if not admin_user or admin_user.role != 'System Admin':
         return redirect(url_for('dashboard'))
     pending_contribs = Contribution.query.filter_by(status='Pending').all()
+    all_contribs = Contribution.query.order_by(Contribution.date_made.desc()).all()
     pending_loans = Loan.query.filter_by(status='Pending').all()
     feedbacks = Feedback.query.filter_by(deleted_by_admin=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.all()
-    return render_template('admin.html', pending_contribs=pending_contribs, pending_loans=pending_loans, feedbacks=feedbacks, members=members)
+    return render_template('admin.html', pending_contribs=pending_contribs, all_contribs=all_contribs, pending_loans=pending_loans, feedbacks=feedbacks, members=members)
 
 if __name__ == '__main__':
     app.run(debug=True)
