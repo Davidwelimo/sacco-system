@@ -18,6 +18,7 @@
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
         .flash { background: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #007bff; }
+        input[type="text"] { padding: 6px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; width: 60%; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -88,23 +89,30 @@
         </table>
     </div>
 
-    <!-- Feedback -->
+    <!-- Feedback & Replies -->
     <div class="card">
-        <h3>Member Feedback</h3>
+        <h3>Member Feedback & Replies</h3>
         <table>
             <tr>
                 <th>Member</th>
                 <th>Message</th>
-                <th>Date</th>
+                <th>Admin Reply</th>
+                <th>Action</th>
             </tr>
             {% for f in feedbacks %}
             <tr>
                 <td>{{ f.user.username }}</td>
                 <td>{{ f.message }}</td>
-                <td>{{ f.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ f.admin_reply or 'No reply yet' }}</td>
+                <td>
+                    <form action="{{ url_for('admin_reply_feedback', feedback_id=f.id) }}" method="POST" style="display:flex; align-items:center;">
+                        <input type="text" name="admin_reply" placeholder="Type reply..." value="{{ f.admin_reply or '' }}" required>
+                        <button type="submit" class="btn">Send</button>
+                    </form>
+                </td>
             </tr>
             {% else %}
-            <tr><td colspan="3">No feedback received yet.</td></tr>
+            <tr><td colspan="4">No feedback received yet.</td></tr>
             {% endfor %}
         </table>
     </div>
