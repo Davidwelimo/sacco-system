@@ -2,170 +2,185 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>RICH MERCHANTS - Member Dashboard</title>
+    <title>SACCO Member Portal - Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #121212; color: #fff; padding: 20px; }
-        .card { background: #1e1e1e; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
-        th { background: #2a2a2a; }
-        a { color: #4da6ff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .btn { padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; display: inline-block; }
-        .btn:hover { background: #0056b3; }
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #a71d2a; }
-        .flash { background: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #007bff; }
-        input, select, textarea { padding: 8px; margin-right: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        .logo-header { text-align: center; margin-bottom: 25px; }
-        .logo-header img { width: 70px; height: 70px; object-fit: cover; border-radius: 50%; border: 2px solid #28a745; margin-bottom: 8px; }
+        :root { --sidebar-bg: #0b192c; --active-bg: #c7253e; --main-bg: #f4f6f9; --card-bg: #ffffff; --text-main: #333333; --text-muted: #666666; --border: #e2e8f0; }
+        body.dark-mode { --sidebar-bg: #121212; --active-bg: #a01d31; --main-bg: #181818; --card-bg: #212121; --text-main: #e0e0e0; --text-muted: #a0a0a0; --border: #333333; }
+        body { font-family: Arial, sans-serif; background: var(--main-bg); color: var(--text-main); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--sidebar-bg); color: white; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
+        .sidebar-brand { padding: 20px; font-weight: bold; font-size: 1.1em; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .sidebar-menu li a { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; color: #cbd5e1; text-decoration: none; font-size: 0.95em; transition: 0.2s; }
+        .sidebar-menu li.active a, .sidebar-menu li a:hover { background: var(--active-bg); color: white; }
+        .sidebar-footer { padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-footer a { color: #cbd5e1; text-decoration: none; display: block; font-size: 0.95em; }
+
+        /* Main Content */
+        .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; }
+        
+        /* Welcome Banner */
+        .welcome-card { background: var(--card-bg); border-radius: 12px; padding: 25px 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .welcome-subtitle { color: #0284c7; font-size: 0.8em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+        .welcome-card h1 { margin: 0; font-size: 1.6em; }
+        .badge { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; border: 1px solid #bae6fd; }
+
+        /* Metrics Row */
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+        .metric-card { background: var(--card-bg); border-radius: 12px; padding: 20px 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid var(--border); border-top: 4px solid #0284c7; }
+        .metric-card.green { border-top-color: #16a34a; }
+        .metric-card.red { border-top-color: #dc2626; }
+        .metric-title { font-size: 0.75em; color: var(--text-muted); font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
+        .metric-value { font-size: 1.5em; font-weight: bold; margin: 0; }
+
+        /* General Card Sections */
+        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid var(--border); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; font-size: 1.1em; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        
+        /* Forms & Buttons */
+        input, select { width: 100%; padding: 10px; margin: 8px 0 15px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-main); border-radius: 6px; box-sizing: border-box; }
+        button.btn { background: #0284c7; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
+        button.btn:hover { background: #0369a1; }
+        .flash { color: #dc2626; font-size: 0.85em; margin-bottom: 10px; font-weight: bold; }
+        
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--text-muted); font-size: 0.85em; }
+
+        .toggle-theme { background: none; border: 1px solid var(--border); color: var(--text-main); padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; margin-bottom: 15px;}
     </style>
 </head>
 <body>
-    <div class="logo-header">
-        <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=150&auto=format&fit=crop&q=80" alt="Real Estate Logo">
-        <h2 style="margin: 0; color: #fff; letter-spacing: 1px;">RICH MERCHANTS</h2>
-    </div>
 
-    <div class="card">
-        <h2>Welcome, {{ user.username }}</h2>
-        <div style="margin-bottom: 15px;">
-            <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" width="80" height="80" style="border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div>
+            <div class="sidebar-brand">
+                <span>SACCO PORTAL</span>
+                <span>&lt;</span>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active"><a href="/dashboard">Dashboard <span>📊</span></a></li>
+                <li><a href="#contributions">Contributions <span>💰</span></a></li>
+                <li><a href="#loans">Loans <span>📋</span></a></li>
+                <li><a href="#feedback">Support & Feedback <span>💬</span></a></li>
+            </ul>
         </div>
-        <form action="{{ url_for('update_settings') }}" method="POST" enctype="multipart/form-data" style="margin-bottom: 15px;">
-            <input type="file" name="profile_pic" required style="width: auto;">
-            <button type="submit" class="btn">Update Picture</button>
-        </form>
-        
-        <h3>Your Account Balances (Totals):</h3>
-        <ul>
-            <li>Weekly Contributions Balance: <strong>{{ user.weekly_balance }} KES</strong></li>
-            <li>Personal Savings Balance: <strong>{{ user.savings_balance }} KES</strong></li>
-            <li>Loan Repayment Balance: <strong>{{ user.loan_repayment_balance }} KES</strong></li>
-            <li>Collateral Damage Balance: <strong>{{ user.collateral_balance }} KES</strong></li>
-        </ul>
-        <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
-    </div>
-
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="flash">
-          {% for message in messages %}
-            <p style="margin: 0;">{{ message }}</p>
-          {% endfor %}
+        <div class="sidebar-footer">
+            <a href="/logout">🚪 Logout</a>
         </div>
-      {% endif %}
-    {% endwith %}
-
-    <!-- Make Payment / Contribution -->
-    <div class="card">
-        <h3>Make Payment / Contribution</h3>
-        {% if is_late %}
-            <p style="color: #dc3545; font-weight: bold;">⚠️ Deadline (Sunday 11:59 PM) has passed. Late weekly payments require at least 120 KES (100 KES goes to weekly, excess goes to Collateral Damage).</p>
-        {% else %}
-            <p style="color: #28a745;">Standard weekly contribution minimum is 100 KES.</p>
-        {% endif %}
-        <form action="{{ url_for('contribute') }}" method="POST">
-            <label>Payment For (Account):</label>
-            <select name="account_type" required>
-                <option value="Weekly Contribution">Weekly Contribution</option>
-                <option value="Personal Savings">Personal Savings</option>
-                <option value="Loan Repayment">Loan Repayment</option>
-                <option value="Collateral Damage">Collateral Damage</option>
-            </select>
-
-            <label>Payment Method:</label>
-            <select name="payment_method" required>
-                <option value="Mpesa">M-Pesa</option>
-                <option value="Cash">Cash</option>
-            </select>
-
-            <label>Amount (KES):</label>
-            <input type="number" step="1" name="amount" min="1" placeholder="Enter amount" required>
-            <button type="submit" class="btn" style="margin-top: 5px;">Submit Payment</button>
-        </form>
     </div>
 
-    <!-- Payment Statements & History -->
-    <div class="card">
-        <h3>Your Payment Statements & History</h3>
-        <table>
-            <tr>
-                <th>Account Type</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Status</th>
-                <th>Date</th>
-            </tr>
-            {% for c in contributions %}
-            <tr>
-                <td><strong>{{ c.account_type }}</strong></td>
-                <td>{{ c.amount }} KES</td>
-                <td>{{ c.payment_method }}</td>
-                <td style="color: {% if c.status == 'Approved' %}#28a745{% elif c.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ c.status }}</td>
-                <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="5">No payment statements found yet.</td></tr>
-            {% endfor %}
-        </table>
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <button class="toggle-theme" onclick="toggleTheme()">🌓 Theme</button>
+        <div style="clear: both;"></div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Welcome Banner -->
+        <div class="welcome-card">
+            <div>
+                <div class="welcome-subtitle">Member Portal</div>
+                <h1>Welcome back, {{ user.username | upper }}</h1>
+            </div>
+            <div>
+                <span class="badge">Role: {{ user.role }}</span>
+            </div>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-title">Weekly Balance</div>
+                <p class="metric-value">KES {{ "%.2f"|format(user.weekly_balance) }}</p>
+            </div>
+            <div class="metric-card green">
+                <div class="metric-title">Savings Balance</div>
+                <p class="metric-value">KES {{ "%.2f"|format(user.savings_balance) }}</p>
+            </div>
+            <div class="metric-card red">
+                <div class="metric-title">Collateral Balance</div>
+                <p class="metric-value">KES {{ "%.2f"|format(user.collateral_balance) }}</p>
+            </div>
+        </div>
+
+        <!-- Action / Forms Section -->
+        <div class="card-grid">
+            <div class="card" id="contributions">
+                <h3>Make Contribution</h3>
+                <form method="POST" action="/contribute">
+                    <label>Account Type</label>
+                    <select name="account_type">
+                        <option value="Weekly Contribution">Weekly Contribution (Min: {{ min_amount }} KES)</option>
+                        <option value="Personal Savings">Personal Savings</option>
+                        <option value="Loan Repayment">Loan Repayment</option>
+                        <option value="Collateral Damage">Collateral Damage</option>
+                    </select>
+                    <label>Payment Method</label>
+                    <select name="payment_method">
+                        <option value="Mpesa">M-Pesa</option>
+                        <option value="Bank">Bank Transfer</option>
+                    </select>
+                    <label>Amount (KES)</label>
+                    <input type="number" step="0.01" name="amount" placeholder="Enter amount" required>
+                    <button type="submit" class="btn">Submit Contribution</button>
+                </form>
+            </div>
+
+            <div class="card" id="loans">
+                <h3>Request a Loan</h3>
+                <form method="POST" action="/request_loan">
+                    <label>Loan Amount (KES)</label>
+                    <input type="number" step="0.01" name="amount" placeholder="Enter requested amount" required>
+                    <button type="submit" class="btn" style="background: #16a34a; margin-top: 35px;">Submit Loan Request</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Transaction History Table -->
+        <div class="card">
+            <h3>Recent Contributions History</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Account Type</th>
+                        <th>Method</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in contributions %}
+                    <tr>
+                        <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ c.account_type }}</td>
+                        <td>{{ c.payment_method }}</td>
+                        <td>KES {{ c.amount }}</td>
+                        <td><span style="font-weight: bold; color: {% if c.status == 'Approved' %}#16a34a{% elif c.status == 'Declined' %}#dc2626{% else %}#d97706{% endif %};">{{ c.status }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">No contributions recorded yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- Request Loan -->
-    <div class="card">
-        <h3>Request Loan</h3>
-        <form action="{{ url_for('request_loan') }}" method="POST">
-            <label>Loan Amount:</label>
-            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-            <button type="submit" class="btn">Apply for Loan</button>
-        </form>
-        <h4 style="margin-top: 15px;">Your Loan Requests</h4>
-        <table>
-            <tr>
-                <th>Amount</th>
-                <th>Status</th>
-            </tr>
-            {% for l in loans %}
-            <tr>
-                <td>{{ l.amount }} KES</td>
-                <td style="color: {% if l.status == 'Approved' %}#28a745{% elif l.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ l.status }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="2">No loan requests made yet.</td></tr>
-            {% endfor %}
-        </table>
-    </div>
-
-    <!-- Feedback & Notifications -->
-    <div class="card">
-        <h3>Submit Feedback & Admin Notifications</h3>
-        <form action="{{ url_for('submit_feedback') }}" method="POST">
-            <textarea name="message" placeholder="Type your feedback here..." rows="3" required></textarea>
-            <button type="submit" class="btn">Send Feedback</button>
-        </form>
-        <h4 style="margin-top: 15px;">Your Feedback History & Admin Replies</h4>
-        <table>
-            <tr>
-                <th>Your Message</th>
-                <th>Admin Reply</th>
-                <th>Date</th>
-                <th>Action</th>
-            </tr>
-            {% for f in feedbacks %}
-            <tr>
-                <td>{{ f.message }}</td>
-                <td style="color: {% if f.admin_reply %}#28a745{% else %}#ffc107{% endif %};">{{ f.admin_reply or 'Pending admin response...' }}</td>
-                <td>{{ f.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>
-                    <form action="{{ url_for('delete_feedback', feedback_id=f.id) }}" method="POST" onsubmit="return confirm('Delete this feedback?');">
-                        <button type="submit" class="btn btn-danger" style="padding: 5px 10px;">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="4">You haven't submitted any feedback yet.</td></tr>
-            {% endfor %}
-        </table>
-    </div>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+    </script>
 </body>
 </html>
