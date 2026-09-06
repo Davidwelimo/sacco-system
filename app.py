@@ -2,44 +2,52 @@ from flask import Flask, render_template, redirect, url_for, request, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import random
+from datetime import datetime, time
 from functools import wraps
 from sqlalchemy import func
+from flask_sqlalchemy import SQLAlchemy
+
+basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///sacco.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'sacco.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static/uploads')
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy(app)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=True)
+    phone_number = db.Column(db.String(50), nullable=True)
+    role = db.Column(db.String(50), default='Member') # System Admin, Finance chair, Secretary, Member
     password = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     profile_pic = db.Column(db.String(200), default='default.png')
-    weekly_balance = db.Column(db.Float, default=0.0)
-    monthly_balance = db.Column(db.Float, default=0.0)
-    meeting_balance = db.Column(db.Float, default=0.0)
-    emergency_balance = db.Column(db.Float, default=0.0)
+    
+    mandatory_balance = db.Column(db.Float, default=0.0)
+    collateral_damage_balance = db.Column(db.Float, default=0.0)
+    
     user_reset = db.Column(db.Boolean, default=False)
     reset_otp = db.Column(db.String(10), nullable=True)
 
     contributions = db.relationship('Contribution', backref='user', cascade='all, delete-orphan', lazy=True)
     loans = db.relationship('Loan', backref='user', cascade='all, delete-orphan', lazy=True)
-    sent_transfers = db.relationship('EmergencyTransfer', foreign_keys='EmergencyTransfer.sender_id', backref='sender', cascade='all, delete-orphan', lazy=True)
-    received_transfers = db.relationship('EmergencyTransfer', foreign_keys='EmergencyTransfer.recipient_id', backref='recipient', cascade='all, delete-orphan', lazy=True)
+    feedbacks = db.relationship('Feedback', backref='user', cascade='all, delete-orphan', lazy=True)
 
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    type = db.Column(db.String(50), nullable=False)
+    payment_method = db.Column(db.String(50), nullable=False) # Cash or Mpesa
     amount = db.Column(db.Float, nullable=False)
+    base_paid = db.Column(db.Float, default=0.0)
+    penalty_paid = db.Column(db.Float, default=0.0)
     status = db.Column(db.String(50), default='Pending')
+    date_made = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Loan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -47,18 +55,17 @@ class Loan(db.Model):
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
 
-class EmergencyTransfer(db.Model):
+class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(50), default='Pending')
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
         hashed_pw = generate_password_hash('admin123', method='scrypt')
-        default_admin = User(username='admin', password=hashed_pw, is_admin=True)
+        default_admin = User(username='admin', email='admin@sacco.com', phone_number='0700000000', role='System Admin', password=hashed_pw, is_admin=True)
         db.session.add(default_admin)
         db.session.commit()
 
@@ -94,14 +101,18 @@ def login():
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
+        email = request.form.get('email')
+        phone_number = request.form.get('phone_number')
         password = request.form.get('password')
+        role = request.form.get('role', 'Member')
+        
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             flash('Username already exists.')
             return redirect(url_for('register'))
         
         hashed_pw = generate_password_hash(password, method='scrypt')
-        new_user = User(username=username, password=hashed_pw, is_admin=False)
+        new_user = User(username=username, email=email, phone_number=phone_number, role=role, password=hashed_pw, is_admin=False)
         db.session.add(new_user)
         db.session.commit()
         flash('Account created successfully! Please log in.')
@@ -114,68 +125,21 @@ def logout():
     flash('Logged out successfully.')
     return redirect(url_for('login'))
 
-@app.route('/forgot_password', methods=['GET', 'POST'])
-def forgot_password():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        user = User.query.filter_by(username=username).first()
-        if user:
-            user.user_reset = True
-            db.session.commit()
-            flash('Password reset requested. Please contact the admin for your OTP.')
-        else:
-            flash('Username not found.')
-        return redirect(url_for('forgot_password'))
-    return render_template('reset_otp.html')
-
-@app.route('/reset_password_otp', methods=['GET', 'POST'])
-def reset_password():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        otp_input = request.form.get('otp')
-        new_password = request.form.get('new_password')
-        
-        user = User.query.filter_by(username=username).first()
-        if user and user.user_reset and user.reset_otp == otp_input:
-            user.password = generate_password_hash(new_password, method='scrypt')
-            user.user_reset = False
-            user.reset_otp = None
-            db.session.commit()
-            flash('Password reset successfully! You can now log in.')
-            return redirect(url_for('login'))
-        flash('Invalid username or OTP.')
-    return render_template('reset_otp.html')
-
 @app.route('/dashboard')
 @login_required
 def dashboard():
     user = User.query.get(session['user_id'])
     if user.is_admin:
         return redirect(url_for('admin_dashboard'))
-    contributions = Contribution.query.filter_by(user_id=user.id).all()
+    contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
     loans = Loan.query.filter_by(user_id=user.id).all()
-    transfers = EmergencyTransfer.query.filter((EmergencyTransfer.sender_id == user.id) | (EmergencyTransfer.recipient_id == user.id)).all()
-    members = User.query.filter_by(is_admin=False).all()
-    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, transfers=transfers, members=members)
-
-@app.route('/upload_profile_pic', methods=['POST'])
-@login_required
-def upload_profile_pic():
-    user = User.query.get(session['user_id'])
-    file = request.files.get('profile_pic')
-    if file:
-        filename = f"user_{user.id}_{file.filename}"
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        user.profile_pic = filename
-        db.session.commit()
-        flash('Profile picture updated!')
-    return redirect(url_for('dashboard'))
+    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans)
 
 @app.route('/contribute', methods=['POST'])
 @login_required
 def contribute():
     user = User.query.get(session['user_id'])
-    c_type = request.form.get('type')
+    payment_method = request.form.get('payment_method') # Cash or Mpesa
     amount_str = request.form.get('amount')
     
     try:
@@ -186,91 +150,74 @@ def contribute():
         flash('Invalid amount entered.')
         return redirect(url_for('dashboard'))
     
-    new_contrib = Contribution(user_id=user.id, type=c_type, amount=amount, status='Pending')
+    # Weekly deadline logic: Monday 00:00 hrs
+    now = datetime.utcnow()
+    is_late = False
+    if now.weekday() == 0 and now.time() >= time(0, 0):
+        is_late = True
+    elif now.weekday() > 0:
+        is_late = True
+
+    base_due = 100.0
+    penalty_due = 20.0 if is_late else 0.0
+    total_required = base_due + penalty_due
+
+    if amount < base_due:
+        flash(f'Minimum mandatory contribution is {base_due} bob.')
+        return redirect(url_for('dashboard'))
+
+    applied_base = base_due
+    applied_penalty = 0.0
+
+    if is_late and amount >= total_required:
+        applied_penalty = penalty_due
+    elif is_late and amount < total_required:
+        applied_penalty = max(0.0, amount - base_due)
+
+    new_contrib = Contribution(
+        user_id=user.id,
+        payment_method=payment_method,
+        amount=amount,
+        base_paid=applied_base,
+        penalty_paid=applied_penalty,
+        status='Pending'
+    )
     db.session.add(new_contrib)
     db.session.commit()
     flash('Contribution submitted for admin approval.')
     return redirect(url_for('dashboard'))
 
-@app.route('/pay_with_emergency', methods=['POST'])
+@app.route('/submit_feedback', methods=['POST'])
 @login_required
-def pay_with_emergency():
+def submit_feedback():
     user = User.query.get(session['user_id'])
-    c_type = request.form.get('type')
-    amount_str = request.form.get('amount')
-    
-    try:
-        amount = float(amount_str)
-        if amount <= 0:
-            raise ValueError()
-    except (ValueError, TypeError):
-        flash('Invalid amount entered.')
-        return redirect(url_for('dashboard'))
-        
-    if user.emergency_balance >= amount:
-        user.emergency_balance -= amount
-        if c_type == 'weekly':
-            user.weekly_balance += amount
-        elif c_type == 'monthly':
-            user.monthly_balance += amount
-        elif c_type == 'meeting':
-            user.meeting_balance += amount
+    message = request.form.get('message')
+    if message:
+        fb = Feedback(user_id=user.id, message=message)
+        db.session.add(fb)
         db.session.commit()
-        flash('Contribution successfully paid using your emergency fund!')
-    else:
-        flash('Insufficient emergency fund balance.')
+        flash('Feedback submitted directly to admin successfully!')
     return redirect(url_for('dashboard'))
 
-@app.route('/request_loan', methods=['POST'])
+@app.route('/update_settings', methods=['POST'])
 @login_required
-def request_loan():
+def update_settings():
     user = User.query.get(session['user_id'])
-    amount_str = request.form.get('amount')
-    try:
-        amount = float(amount_str)
-        if amount <= 0:
-            raise ValueError()
-    except (ValueError, TypeError):
-        flash('Invalid loan amount.')
-        return redirect(url_for('dashboard'))
+    new_username = request.form.get('username')
+    new_password = request.form.get('password')
+    file = request.files.get('profile_pic')
+    
+    if new_username:
+        user.username = new_username
+    if new_password:
+        user.password = generate_password_hash(new_password, method='scrypt')
+    if file:
+        filename = f"user_{user.id}_{file.filename}"
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        user.profile_pic = filename
         
-    new_loan = Loan(user_id=user.id, amount=amount, status='Pending')
-    db.session.add(new_loan)
     db.session.commit()
-    flash('Loan request submitted successfully.')
-    return redirect(url_for('dashboard'))
-
-@app.route('/transfer_emergency', methods=['POST'])
-@login_required
-def transfer_emergency():
-    user = User.query.get(session['user_id'])
-    recipient_id = request.form.get('recipient_id')
-    amount_str = request.form.get('amount')
-    
-    if not recipient_id or not amount_str:
-        flash('Please select a recipient and enter an amount.')
-        return redirect(url_for('dashboard'))
-        
-    try:
-        transfer_amt = float(amount_str)
-        if transfer_amt <= 0:
-            raise ValueError()
-    except ValueError:
-        flash('Invalid transfer amount.')
-        return redirect(url_for('dashboard'))
-        
-    recipient = User.query.get(recipient_id)
-    if not recipient or recipient.is_admin:
-        flash('Recipient not found or invalid.')
-        return redirect(url_for('dashboard'))
-        
-    if user.emergency_balance >= transfer_amt:
-        new_transfer = EmergencyTransfer(sender_id=user.id, recipient_id=recipient.id, amount=transfer_amt, status='Pending')
-        db.session.add(new_transfer)
-        db.session.commit()
-        flash('Emergency transfer request submitted to admin for approval.')
-    else:
-        flash('Insufficient emergency fund balance.')
+    flash('Settings updated successfully!')
     return redirect(url_for('dashboard'))
 
 @app.route('/admin/dashboard')
@@ -281,26 +228,18 @@ def admin_dashboard():
         return redirect(url_for('dashboard'))
     
     pending_contribs = Contribution.query.filter_by(status='Pending').all()
-    pending_loans = Loan.query.filter_by(status='Pending').all()
-    pending_transfers = EmergencyTransfer.query.filter_by(status='Pending').all()
+    feedbacks = Feedback.query.all()
     members = User.query.filter_by(is_admin=False).all()
-
-    total_weekly_contributions = db.session.query(func.sum(User.weekly_balance)).scalar() or 0.0
-    total_monthly_contributions = db.session.query(func.sum(User.monthly_balance)).scalar() or 0.0
-    total_meeting_contributions = db.session.query(func.sum(User.meeting_balance)).scalar() or 0.0
-    main_sacco_account_total = total_weekly_contributions + total_monthly_contributions + total_meeting_contributions
-    total_loans_given = db.session.query(func.sum(Loan.amount)).filter_by(status='Approved').scalar() or 0.0
+    
+    total_mandatory = db.session.query(func.sum(User.mandatory_balance)).scalar() or 0.0
+    total_collateral = db.session.query(func.sum(User.collateral_damage_balance)).scalar() or 0.0
 
     return render_template('admin.html', 
                            pending=pending_contribs, 
-                           pending_loans=pending_loans, 
-                           pending_transfers=pending_transfers, 
+                           feedbacks=feedbacks,
                            members=members,
-                           total_weekly_contributions=total_weekly_contributions,
-                           total_monthly_contributions=total_monthly_contributions,
-                           total_meeting_contributions=total_meeting_contributions,
-                           main_sacco_account_total=main_sacco_account_total,
-                           total_loans_given=total_loans_given)
+                           total_mandatory=total_mandatory,
+                           total_collateral=total_collateral)
 
 @app.route('/admin/approve/contrib/<int:contrib_id>')
 @login_required
@@ -310,28 +249,16 @@ def approve_contribution(contrib_id):
         return redirect(url_for('dashboard'))
         
     contrib = Contribution.query.get_or_404(contrib_id)
-    contrib.status = 'Approved'
-    member = User.query.get(contrib.user_id)
-    
-    thresholds = {'weekly': 50, 'monthly': 200, 'meeting': 100}
-    limit = thresholds.get(contrib.type, 0)
-    
-    if contrib.amount > limit:
-        base_amount = limit
-        extra_amount = contrib.amount - limit
-        member.emergency_balance += extra_amount
-    else:
-        base_amount = contrib.amount
+    if contrib.status != 'Approved':
+        contrib.status = 'Approved'
+        member = User.query.get(contrib.user_id)
         
-    if contrib.type == 'weekly':
-        member.weekly_balance += base_amount
-    elif contrib.type == 'monthly':
-        member.monthly_balance += base_amount
-    elif contrib.type == 'meeting':
-        member.meeting_balance += base_amount
-        
-    db.session.commit()
-    flash('Contribution approved successfully!')
+        member.mandatory_balance += contrib.base_paid
+        if contrib.penalty_paid > 0:
+            member.collateral_damage_balance += contrib.penalty_paid
+            
+        db.session.commit()
+        flash('Contribution approved, mandatory account updated, and penalty routed to collateral damage!')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/decline/contrib/<int:contrib_id>')
@@ -344,93 +271,6 @@ def decline_contribution(contrib_id):
     contrib.status = 'Declined'
     db.session.commit()
     flash('Contribution declined.')
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/approve/loan/<int:loan_id>')
-@login_required
-def approve_loan(loan_id):
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user.is_admin:
-        return redirect(url_for('dashboard'))
-    loan = Loan.query.get_or_404(loan_id)
-    loan.status = 'Approved'
-    db.session.commit()
-    flash('Loan approved successfully!')
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/decline/loan/<int:loan_id>')
-@login_required
-def decline_loan(loan_id):
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user.is_admin:
-        return redirect(url_for('dashboard'))
-    loan = Loan.query.get_or_404(loan_id)
-    loan.status = 'Declined'
-    db.session.commit()
-    flash('Loan declined.')
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/approve/transfer/<int:transfer_id>')
-@login_required
-def approve_transfer(transfer_id):
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user.is_admin:
-        return redirect(url_for('dashboard'))
-    transfer = EmergencyTransfer.query.get_or_404(transfer_id)
-    sender = User.query.get(transfer.sender_id)
-    recipient = User.query.get(transfer.recipient_id)
-    
-    if sender.emergency_balance >= transfer.amount:
-        sender.emergency_balance -= transfer.amount
-        recipient.emergency_balance += transfer.amount
-        transfer.status = 'Approved'
-        db.session.commit()
-        flash('Emergency transfer approved successfully!')
-    else:
-        transfer.status = 'Declined'
-        db.session.commit()
-        flash('Sender had insufficient balance; transfer declined.')
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/decline/transfer/<int:transfer_id>')
-@login_required
-def decline_transfer(transfer_id):
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user.is_admin:
-        return redirect(url_for('dashboard'))
-    transfer = EmergencyTransfer.query.get_or_404(transfer_id)
-    transfer.status = 'Declined'
-    db.session.commit()
-    flash('Emergency transfer declined.')
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/delete/user/<int:user_id>')
-@login_required
-def delete_user(user_id):
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user.is_admin:
-        return redirect(url_for('dashboard'))
-    user_to_delete = User.query.get_or_404(user_id)
-    if user_to_delete.is_admin:
-        flash("Cannot delete admin account.")
-    else:
-        db.session.delete(user_to_delete)
-        db.session.commit()
-        flash("Member removed successfully.")
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/issue_otp/<int:user_id>')
-@login_required
-def issue_otp(user_id):
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user.is_admin:
-        return redirect(url_for('dashboard'))
-    target_user = User.query.get_or_404(user_id)
-    otp = str(random.randint(100000, 999999))
-    target_user.reset_otp = otp
-    target_user.user_reset = True
-    db.session.commit()
-    flash(f"OTP generated for {target_user.username}: {otp}")
     return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
