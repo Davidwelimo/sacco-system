@@ -18,7 +18,8 @@ elif db_url and db_url.startswith("postgresql://") and "+psycopg2" not in db_url
     db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 if db_url and "sslmode" not in db_url and "sqlite" not in db_url:
-    db_url += "?sslmode=require"
+    separator = "&" if "?" in db_url else "?"
+    db_url += f"{separator}sslmode=require"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
