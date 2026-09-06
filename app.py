@@ -127,6 +127,13 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html')
 
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        flash('Password reset instructions have been sent.')
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
