@@ -394,7 +394,7 @@ def update_settings():
 @login_required
 def publish_announcement():
     user = User.query.get(session['user_id'])
-    if not user or user.role not in LEADERSHIP_ROLES:
+    if not user or user.role == 'Member':
         flash("Unauthorized action.")
         return redirect(url_for('dashboard'))
 
