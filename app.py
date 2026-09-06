@@ -289,6 +289,18 @@ def issue_otp(user_id):
     flash(f'OTP generated successfully for {target_user.username}: {otp}')
     return redirect(url_for('admin'))
 
+@app.route('/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.role != 'System Admin':
+        return redirect(url_for('dashboard'))
+    target_user = User.query.get_or_404(user_id)
+    db.session.delete(target_user)
+    db.session.commit()
+    flash('User deleted successfully.')
+    return redirect(url_for('admin'))
+
 @app.route('/admin')
 @login_required
 def admin():
