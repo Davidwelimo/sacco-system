@@ -70,6 +70,14 @@ with app.app_context():
         db.session.add(default_admin)
         db.session.commit()
 
+def update_user_balance(user_id):
+    """Recalculate user balance automatically based on approved contributions."""
+    user = User.query.get(user_id)
+    if user:
+        approved_contribs = Contribution.query.filter_by(user_id=user_id, status='Approved').all()
+        user.weekly_balance = sum(c.amount for c in approved_contribs)
+        db.session.commit()
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -227,13 +235,10 @@ def approve_contribution(contrib_id):
     if not admin_user or admin_user.role != 'System Admin':
         return redirect(url_for('dashboard'))
     contrib = Contribution.query.get_or_404(contrib_id)
-    if contrib.status != 'Approved':
-        contrib.status = 'Approved'
-        member = User.query.get(contrib.user_id)
-        if member:
-            member.weekly_balance += contrib.amount
-        db.session.commit()
-        flash('Contribution approved successfully.')
+    contrib.status = 'Approved'
+    db.session.commit()
+    update_user_balance(contrib.user_id)
+    flash('Contribution approved successfully.')
     return redirect(url_for('admin'))
 
 @app.route('/reject_contribution/<int:contrib_id>', methods=['POST'])
@@ -245,6 +250,7 @@ def reject_contribution(contrib_id):
     contrib = Contribution.query.get_or_404(contrib_id)
     contrib.status = 'Declined'
     db.session.commit()
+    update_user_balance(contrib.user_id)
     flash('Contribution rejected.')
     return redirect(url_for('admin'))
 
@@ -256,17 +262,14 @@ def delete_contribution(contrib_id):
         return redirect(url_for('dashboard'))
     
     contrib = Contribution.query.get_or_404(contrib_id)
+    user_id = contrib.user_id
     
-    # If the contribution was already approved, subtract it from the user's balance before deleting
-    if contrib.status == 'Approved':
-        member = User.query.get(contrib.user_id)
-        if member:
-            member.weekly_balance -= contrib.amount
-            if member.weekly_balance < 0:
-                member.weekly_balance = 0.0
-
     db.session.delete(contrib)
     db.session.commit()
+    
+    # Recalculate balance accurately from remaining approved contributions
+    update_user_balance(user_id)
+    
     flash('Contribution request removed and balance updated successfully.')
     return redirect(url_for('admin'))
 
