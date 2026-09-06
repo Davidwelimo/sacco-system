@@ -9,8 +9,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'sacco.db'))
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
+
+# Fix database URL format for Render (postgres:// -> postgresql://)
+db_url = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'sacco.db'))
+if db_url and db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static/uploads')
 
@@ -186,7 +192,6 @@ def contribute():
 
     late_status = is_contribution_late()
 
-    # If paying for weekly contributions, enforce rule: min 100 on time, min 120 late
     if account_type == 'Weekly Contribution':
         minimum_required = 120.0 if late_status else 100.0
         if amount < minimum_required:
@@ -196,14 +201,11 @@ def contribute():
                 flash(f'Weekly contribution must be at least 100 KES.')
             return redirect(url_for('dashboard'))
 
-        # If late and paid 120 or more, split: 100 goes to weekly, excess goes to Collateral Damage
         if late_status and amount >= 120.0:
             excess = amount - 100.0
-            # Record 100 to Weekly Contribution
             contrib_weekly = Contribution(user_id=user.id, payment_method=payment_method, account_type='Weekly Contribution', amount=100.0, status='Pending')
             db.session.add(contrib_weekly)
             
-            # Record excess to Collateral Damage
             contrib_collateral = Contribution(user_id=user.id, payment_method=payment_method, account_type='Collateral Damage', amount=excess, status='Pending')
             db.session.add(contrib_collateral)
             
@@ -211,7 +213,6 @@ def contribute():
             flash(f'Late contribution processed: 100 KES routed to Weekly Contributions and {excess} KES routed to Collateral Damage account.')
             return redirect(url_for('dashboard'))
 
-    # Standard contribution routing for other accounts or on-time payments
     new_contrib = Contribution(
         user_id=user.id,
         payment_method=payment_method,
