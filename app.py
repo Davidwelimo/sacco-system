@@ -235,24 +235,18 @@ def register():
             return redirect(url_for('register'))
     return render_template('register.html')
 
-@app.route('/select_role', methods=['GET', 'POST'])
+@app.route('/select_role', methods=['GET', 'POST'])@app.route('/select_role', methods=['POST'])
 @login_required
 def select_role():
+    selected_role = request.form.get('role')  # Make sure 'role' matches the HTML name attribute
     user = User.query.get(session['user_id'])
-    if not user:
-        session.pop('user_id', None)
-        return redirect(url_for('login'))
-    if user.role == 'System Admin':
-        return redirect(url_for('admin'))
-    if request.method == 'POST':
-        selected_role = request.form.get('role')
-        valid_roles = ['Chairman and finance', 'HR and secretary manager', 'ICT director', 'Member']
-        if selected_role in valid_roles:
-            user.role = selected_role
-            db.session.commit()
-            flash('Role updated successfully!')
-            return redirect(url_for('dashboard'))
-    return render_template('select_role.html')
+    
+    if user and selected_role:
+        user.role = selected_role
+        db.session.commit()
+        flash("Role updated successfully!")
+        
+    return redirect(url_for('dashboard'))
 
 @app.route('/reset_password_otp', methods=['GET', 'POST'])
 def reset_password_otp():
