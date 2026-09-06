@@ -65,6 +65,8 @@ class Feedback(db.Model):
     message = db.Column(db.Text, nullable=False)
     admin_reply = db.Column(db.Text, nullable=True)
     date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
+    deleted_by_member = db.Column(db.Boolean, default=False)
+    deleted_by_admin = db.Column(db.Boolean, default=False)
 
 with app.app_context():
     db.create_all()
@@ -136,7 +138,7 @@ def dashboard():
         return redirect(url_for('admin'))
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
     loans = Loan.query.filter_by(user_id=user.id).all()
-    feedbacks = Feedback.query.filter_by(user_id=user.id).order_by(Feedback.date_submitted.desc()).all()
+    feedbacks = Feedback.query.filter_by(user_id=user.id, deleted_by_member=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.filter(User.id != user.id).all()
     return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, feedbacks=feedbacks, members=members)
 
@@ -206,14 +208,20 @@ def delete_feedback(feedback_id):
     user = User.query.get(session['user_id'])
     fb = Feedback.query.get_or_404(feedback_id)
     
-    # Allow deletion if the user is the owner of the feedback or an admin
-    if user.role == 'System Admin' or fb.user_id == user.id:
-        db.session.delete(fb)
-        db.session.commit()
-        flash('Feedback deleted successfully.')
+    if user.role == 'System Admin':
+        fb.deleted_by_admin = True
+    elif fb.user_id == user.id:
+        fb.deleted_by_member = True
     else:
         flash('Unauthorized action.')
+        return redirect(url_for('dashboard'))
+    
+    if fb.deleted_by_member and fb.deleted_by_admin:
+        db.session.delete(fb)
         
+    db.session.commit()
+    flash('Feedback deleted successfully.')
+    
     if user.role == 'System Admin':
         return redirect(url_for('admin'))
     return redirect(url_for('dashboard'))
@@ -308,7 +316,7 @@ def admin():
         return redirect(url_for('dashboard'))
     pending_contribs = Contribution.query.filter_by(status='Pending').all()
     pending_loans = Loan.query.filter_by(status='Pending').all()
-    feedbacks = Feedback.query.order_by(Feedback.date_submitted.desc()).all()
+    feedbacks = Feedback.query.filter_by(deleted_by_admin=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.all()
     return render_template('admin.html', pending_contribs=pending_contribs, pending_loans=pending_loans, feedbacks=feedbacks, members=members)
 
