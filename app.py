@@ -170,6 +170,27 @@ def register():
 
     return render_template('register.html')
 
+@app.route('/reset_password_otp', methods=['GET', 'POST'])
+def reset_password_otp():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        otp = request.form.get('otp')
+        new_password = request.form.get('new_password')
+        
+        user = User.query.filter_by(username=username).first()
+        if user and user.user_reset and user.reset_otp == otp:
+            user.password = generate_password_hash(new_password, method='scrypt')
+            user.reset_otp = None
+            user.user_reset = False
+            db.session.commit()
+            flash('Password has been successfully reset! Please log in.')
+            return redirect(url_for('login'))
+        else:
+            flash('Invalid username or OTP.')
+            return redirect(url_for('reset_password_otp'))
+            
+    return render_template('reset_otp.html')
+
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
@@ -349,7 +370,7 @@ def delete_loan(loan_id):
     return redirect(url_for('admin'))
 
 @app.route('/admin_reply_feedback/<int:feedback_id>', methods=['POST'])
-|login_required
+@login_required
 def admin_reply_feedback(feedback_id):
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role != 'System Admin': return redirect(url_for('dashboard'))
