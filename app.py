@@ -26,10 +26,9 @@ class User(db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False)
     phone_number = db.Column(db.String(50), nullable=True)
     password = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(50), default='Member') # System Admin, Finance chair, Secretary, Member
+    role = db.Column(db.String(50), default='Member')
     profile_pic = db.Column(db.String(200), default='default.png')
     mandatory_balance = db.Column(db.Float, default=0.0)
-    emergency_balance = db.Column(db.Float, default=0.0)
     weekly_balance = db.Column(db.Float, default=0.0)
     monthly_balance = db.Column(db.Float, default=0.0)
     meeting_balance = db.Column(db.Float, default=0.0)
@@ -38,15 +37,14 @@ class User(db.Model):
     
     contributions = db.relationship('Contribution', backref='user', cascade='all, delete-orphan', lazy=True)
     loans = db.relationship('Loan', backref='user', cascade='all, delete-orphan', lazy=True)
-    transfers = db.relationship('EmergencyTransfer', foreign_keys='EmergencyTransfer.sender_id', backref='sender', lazy=True)
     feedbacks = db.relationship('Feedback', backref='user', cascade='all, delete-orphan', lazy=True)
 
 class Contribution(db.Model):
     __tablename__ = 'contributions'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    type = db.Column(db.String(50), nullable=False) # weekly, monthly, meeting
-    payment_method = db.Column(db.String(50), nullable=False) # Cash or Mpesa
+    type = db.Column(db.String(50), nullable=False)
+    payment_method = db.Column(db.String(50), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     base_paid = db.Column(db.Float, default=0.0)
     penalty_paid = db.Column(db.Float, default=0.0)
@@ -60,15 +58,6 @@ class Loan(db.Model):
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
     date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
-
-class EmergencyTransfer(db.Model):
-    __tablename__ = 'emergency_transfers'
-    id = db.Column(db.Integer, primary_key=True)
-    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(50), default='Pending')
-    recipient = db.relationship('User', foreign_keys=[recipient_id])
 
 class Feedback(db.Model):
     __tablename__ = 'feedbacks'
@@ -149,9 +138,8 @@ def dashboard():
         return redirect(url_for('admin'))
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
     loans = Loan.query.filter_by(user_id=user.id).all()
-    transfers = EmergencyTransfer.query.filter_by(sender_id=user.id).all()
     members = User.query.filter(User.id != user.id).all()
-    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, transfers=transfers, members=members)
+    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, members=members)
 
 @app.route('/contribute', methods=['POST'])
 @login_required
@@ -183,35 +171,6 @@ def contribute():
     flash('Contribution submitted for admin approval.')
     return redirect(url_for('dashboard'))
 
-@app.route('/pay_emergency', methods=['POST'])
-@login_required
-def pay_emergency():
-    user = User.query.get(session['user_id'])
-    ctype = request.form.get('type')
-    try:
-        amount = float(request.form.get('amount'))
-        if amount <= 0:
-            raise ValueError()
-    except (ValueError, TypeError):
-        flash('Invalid amount entered.')
-        return redirect(url_for('dashboard'))
-
-    if user.emergency_balance < amount:
-        flash('Insufficient emergency fund balance.')
-        return redirect(url_for('dashboard'))
-
-    user.emergency_balance -= amount
-    if ctype == 'weekly':
-        user.weekly_balance += amount
-    elif ctype == 'monthly':
-        user.monthly_balance += amount
-    elif ctype == 'meeting':
-        user.meeting_balance += amount
-
-    db.session.commit()
-    flash('Successfully paid contribution using Emergency Fund.')
-    return redirect(url_for('dashboard'))
-
 @app.route('/request_loan', methods=['POST'])
 @login_required
 def request_loan():
@@ -228,29 +187,6 @@ def request_loan():
     db.session.add(new_loan)
     db.session.commit()
     flash('Loan request submitted successfully.')
-    return redirect(url_for('dashboard'))
-
-@app.route('/transfer_emergency', methods=['POST'])
-@login_required
-def transfer_emergency():
-    user = User.query.get(session['user_id'])
-    recipient_id = request.form.get('recipient_id')
-    try:
-        amount = float(request.form.get('amount'))
-        if amount <= 0:
-            raise ValueError()
-    except (ValueError, TypeError):
-        flash('Invalid transfer amount.')
-        return redirect(url_for('dashboard'))
-
-    if user.emergency_balance < amount:
-        flash('Insufficient emergency funds for transfer.')
-        return redirect(url_for('dashboard'))
-
-    transfer = EmergencyTransfer(sender_id=user.id, recipient_id=recipient_id, amount=amount, status='Pending')
-    db.session.add(transfer)
-    db.session.commit()
-    flash('Emergency transfer request submitted.')
     return redirect(url_for('dashboard'))
 
 @app.route('/submit_feedback', methods=['POST'])
