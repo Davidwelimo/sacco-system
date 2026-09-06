@@ -235,7 +235,21 @@ def dashboard():
     min_amount = 120.0 if late_status else 100.0
 
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
-    loans = Loan.query.filter_by(user_id=user.id).order_by(Loan.date_submitted.desc()).all()
+    
+    # Process Loans with Partial Repayment Calculations
+    raw_loans = Loan.query.filter_by(user_id=user.id).order_by(Loan.date_submitted.desc()).all()
+    loans = []
+    for loan in raw_loans:
+        paid_so_far = sum(c.amount for c in Contribution.query.filter_by(user_id=user.id, account_type='Loan Repayment', status='Approved').all())
+        remaining_balance = max(0.0, loan.amount - paid_so_far)
+        loans.append({
+            'date_submitted': loan.date_submitted,
+            'amount': loan.amount,
+            'paid_so_far': paid_so_far,
+            'remaining_balance': remaining_balance,
+            'status': loan.status
+        })
+
     feedbacks = Feedback.query.filter_by(user_id=user.id, deleted_by_member=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.filter(User.id != user.id).all()
     
