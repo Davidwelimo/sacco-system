@@ -18,7 +18,6 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db = SQLAlchemy(app)
 
-# --- DATABASE MODELS ---
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -74,7 +73,6 @@ with app.app_context():
         db.session.add(default_admin)
         db.session.commit()
 
-# --- AUTH DECORATOR ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -84,7 +82,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- ROUTES ---
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -145,7 +142,7 @@ def dashboard():
 @login_required
 def contribute():
     user = User.query.get(session['user_id'])
-    payment_method = request.form.get('payment_method')
+    payment_method = request.form.get('payment_method', 'Mpesa')
     ctype = request.form.get('type')
     try:
         amount = float(request.form.get('amount'))
@@ -214,6 +211,40 @@ def update_settings():
         flash('Profile picture updated successfully!')
     return redirect(url_for('dashboard'))
 
+@app.route('/approve_contribution/<int:contrib_id>', methods=['POST'])
+@login_required
+def approve_contribution(contrib_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.role != 'System Admin':
+        return redirect(url_for('dashboard'))
+    contrib = Contribution.query.get_or_404(contrib_id)
+    contrib.status = 'Approved'
+    
+    member = User.query.get(contrib.user_id)
+    if member:
+        if contrib.type == 'weekly':
+            member.weekly_balance += contrib.amount
+        elif contrib.type == 'monthly':
+            member.monthly_balance += contrib.amount
+        elif contrib.type == 'meeting':
+            member.meeting_balance += contrib.amount
+
+    db.session.commit()
+    flash('Contribution approved successfully.')
+    return redirect(url_for('admin'))
+
+@app.route('/approve_loan/<int:loan_id>', methods=['POST'])
+@login_required
+def approve_loan(loan_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.role != 'System Admin':
+        return redirect(url_for('dashboard'))
+    loan = Loan.query.get_or_404(loan_id)
+    loan.status = 'Approved'
+    db.session.commit()
+    flash('Loan approved successfully.')
+    return redirect(url_for('admin'))
+
 @app.route('/issue_otp/<int:user_id>', methods=['POST'])
 @login_required
 def issue_otp(user_id):
@@ -244,8 +275,10 @@ def admin():
     if not admin_user or admin_user.role != 'System Admin':
         return redirect(url_for('dashboard'))
     pending_contribs = Contribution.query.filter_by(status='Pending').all()
+    pending_loans = Loan.query.filter_by(status='Pending').all()
+    feedbacks = Feedback.query.order_by(Feedback.date_submitted.desc()).all()
     members = User.query.all()
-    return render_template('admin.html', pending_contribs=pending_contribs, members=members)
+    return render_template('admin.html', pending_contribs=pending_contribs, pending_loans=pending_loans, feedbacks=feedbacks, members=members)
 
 if __name__ == '__main__':
     app.run(debug=True)
