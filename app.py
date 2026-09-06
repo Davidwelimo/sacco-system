@@ -175,6 +175,10 @@ def register():
 @login_required
 def select_role():
     user = User.query.get(session['user_id'])
+    if not user:
+        session.pop('user_id', None)
+        return redirect(url_for('login'))
+        
     if user.role == 'System Admin':
         return redirect(url_for('admin'))
         
@@ -431,3 +435,4 @@ def admin():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    
