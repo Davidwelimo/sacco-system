@@ -20,6 +20,8 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db = SQLAlchemy(app)
 
 class User(db.Model):
+    __tablename__ = 'users'
+    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=True)
@@ -40,8 +42,10 @@ class User(db.Model):
     feedbacks = db.relationship('Feedback', backref='user', cascade='all, delete-orphan', lazy=True)
 
 class Contribution(db.Model):
+    __tablename__ = 'contributions'
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     payment_method = db.Column(db.String(50), nullable=False) # Cash or Mpesa
     amount = db.Column(db.Float, nullable=False)
     base_paid = db.Column(db.Float, default=0.0)
@@ -50,14 +54,18 @@ class Contribution(db.Model):
     date_made = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Loan(db.Model):
+    __tablename__ = 'loans'
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
 
 class Feedback(db.Model):
+    __tablename__ = 'feedbacks'
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
     date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
 
