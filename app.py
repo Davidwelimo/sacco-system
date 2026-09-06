@@ -84,12 +84,15 @@ class Feedback(db.Model):
     deleted_by_admin = db.Column(db.Boolean, default=False)
 
 with app.app_context():
-    db.create_all()
-    if not User.query.filter_by(username='admin').first():
-        hashed_pw = generate_password_hash('admin123', method='scrypt')
-        default_admin = User(username='admin', email='admin@sacco.com', phone_number='0700000000', role='System Admin', password=hashed_pw)
-        db.session.add(default_admin)
-        db.session.commit()
+    try:
+        db.create_all()
+        if not User.query.filter_by(username='admin').first():
+            hashed_pw = generate_password_hash('admin123', method='scrypt')
+            default_admin = User(username='admin', email='admin@sacco.com', phone_number='0700000000', role='System Admin', password=hashed_pw)
+            db.session.add(default_admin)
+            db.session.commit()
+    except Exception as e:
+        print(f"Database initialization note: {e}")
 
 def is_contribution_late():
     now = datetime.now()
@@ -148,13 +151,23 @@ def register():
         if User.query.filter_by(username=username).first():
             flash('Username already exists.')
             return redirect(url_for('register'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists.')
+            return redirect(url_for('register'))
 
-        hashed_pw = generate_password_hash(password, method='scrypt')
-        new_user = User(username=username, email=email, phone_number=phone_number, password=hashed_pw, role=role)
-        db.session.add(new_user)
-        db.session.commit()
-        flash('Registration successful! Please log in.')
-        return redirect(url_for('login'))
+        try:
+            hashed_pw = generate_password_hash(password, method='scrypt')
+            new_user = User(username=username, email=email, phone_number=phone_number, password=hashed_pw, role=role)
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Registration successful! Please log in.')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred during registration. Username or email may already be taken.')
+            return redirect(url_for('register'))
+
     return render_template('register.html')
 
 @app.route('/logout')
@@ -336,7 +349,7 @@ def delete_loan(loan_id):
     return redirect(url_for('admin'))
 
 @app.route('/admin_reply_feedback/<int:feedback_id>', methods=['POST'])
-@login_required
+|login_required
 def admin_reply_feedback(feedback_id):
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role != 'System Admin': return redirect(url_for('dashboard'))
