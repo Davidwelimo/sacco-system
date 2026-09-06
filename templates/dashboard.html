@@ -16,7 +16,7 @@
         .btn-danger { background: #dc3545; }
         .btn-danger:hover { background: #a71d2a; }
         .flash { background: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #007bff; }
-        input, select { padding: 8px; margin-right: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        input, select, textarea { padding: 8px; margin-right: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
         .logo-header { text-align: center; margin-bottom: 25px; }
         .logo-header img { width: 70px; height: 70px; object-fit: cover; border-radius: 50%; border: 2px solid #28a745; margin-bottom: 8px; }
     </style>
@@ -32,9 +32,8 @@
         <div style="margin-bottom: 15px;">
             <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" width="80" height="80" style="border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
         </div>
-        <!-- Fixed: Changed url_for to update_settings -->
         <form action="{{ url_for('update_settings') }}" method="POST" enctype="multipart/form-data" style="margin-bottom: 15px;">
-            <input type="file" name="profile_pic" required>
+            <input type="file" name="profile_pic" required style="width: auto;">
             <button type="submit" class="btn">Update Picture</button>
         </form>
         <h3>Your Savings Balances:</h3>
@@ -71,13 +70,13 @@
             <input type="number" step="0.01" name="amount" placeholder="Amount" required>
             <button type="submit" class="btn">Pay Contribution</button>
         </form>
-        <p style="font-size: 0.85em; color: #aaa; margin-top: 8px;">*Note: Amounts exceeding 50 KES (weekly), 200 KES (monthly), or 100 KES (meeting) will automatically be routed to your Emergency Fund.</p>
+        <p style="font-size: 0.85em; color: #aaa; margin-top: 8px;">*Note: Amounts exceeding standard rates will automatically be routed to your Emergency Fund.</p>
     </div>
 
-    <!-- Pay Contribution Using Emergency Fund -->
+    <!-- Pay Contribution Using Emergency Fund (Fixed endpoint name) -->
     <div class="card">
         <h3>Pay Contribution Using Emergency Fund</h3>
-        <form action="{{ url_for('pay_with_emergency') }}" method="POST">
+        <form action="{{ url_for('pay_emergency') }}" method="POST">
             <label>Contribution Type:</label>
             <select name="type" required>
                 <option value="weekly">Weekly</option>
