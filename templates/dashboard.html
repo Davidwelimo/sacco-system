@@ -55,15 +55,21 @@
 
     <!-- Make Contribution -->
     <div class="card">
-        <h3>Make Weekly Contribution (100 KES)</h3>
+        <h3>Make Weekly Contribution</h3>
+        {% if is_late %}
+            <p style="color: #dc3545; font-weight: bold;">⚠️ Deadline (Sunday 11:59 PM) has passed. Minimum late contribution is 120 KES (You can pay more).</p>
+        {% else %}
+            <p style="color: #28a745;">Minimum weekly contribution is 100 KES (You can pay more).</p>
+        {% endif %}
         <form action="{{ url_for('contribute') }}" method="POST">
             <label>Payment Method:</label>
             <select name="payment_method" required>
                 <option value="Mpesa">M-Pesa</option>
                 <option value="Cash">Cash</option>
             </select>
-            <p style="margin: 10px 0; color: #aaa;">Amount: <strong>100 KES</strong></p>
-            <button type="submit" class="btn">Pay Weekly Contribution</button>
+            <label>Amount (KES):</label>
+            <input type="number" step="1" name="amount" min="{{ min_amount }}" value="{{ min_amount }}" required>
+            <button type="submit" class="btn" style="margin-top: 5px;">Pay Weekly Contribution</button>
         </form>
     </div>
 

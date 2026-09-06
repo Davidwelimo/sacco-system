@@ -70,8 +70,19 @@ with app.app_context():
         db.session.add(default_admin)
         db.session.commit()
 
+def is_contribution_late():
+    """Checks if current time is past Sunday 11:59 PM."""
+    now = datetime.now()
+    weekday = now.weekday()  # 0=Mon, 6=Sun
+    # If Monday through Saturday, it's late
+    if weekday != 6:
+        return True
+    # If Sunday, check if past 23:59
+    if now.hour > 23 or (now.hour == 23 and now.minute > 59):
+        return True
+    return False
+
 def update_user_balance(user_id):
-    """Recalculate user balance automatically based on approved contributions."""
     user = User.query.get(user_id)
     if user:
         approved_contribs = Contribution.query.filter_by(user_id=user_id, status='Approved').all()
@@ -138,11 +149,16 @@ def dashboard():
     user = User.query.get(session['user_id'])
     if user.role == 'System Admin':
         return redirect(url_for('admin'))
+    
+    late_status = is_contribution_late()
+    min_amount = 120.0 if late_status else 100.0
+
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
     loans = Loan.query.filter_by(user_id=user.id).order_by(Loan.date_submitted.desc()).all()
     feedbacks = Feedback.query.filter_by(user_id=user.id, deleted_by_member=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.filter(User.id != user.id).all()
-    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, feedbacks=feedbacks, members=members)
+    
+    return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, feedbacks=feedbacks, members=members, min_amount=min_amount, is_late=late_status)
 
 @app.route('/contribute', methods=['POST'])
 @login_required
@@ -150,15 +166,31 @@ def contribute():
     user = User.query.get(session['user_id'])
     payment_method = request.form.get('payment_method', 'Mpesa')
     
+    try:
+        amount = float(request.form.get('amount'))
+    except (ValueError, TypeError):
+        flash('Invalid contribution amount.')
+        return redirect(url_for('dashboard'))
+
+    late_status = is_contribution_late()
+    minimum_required = 120.0 if late_status else 100.0
+
+    if amount < minimum_required:
+        if late_status:
+            flash(f'Deadline passed (Sunday 11:59 PM). Late contributions must be 120 KES or above.')
+        else:
+            flash(f'Weekly contribution must be at least 100 KES.')
+        return redirect(url_for('dashboard'))
+
     new_contrib = Contribution(
         user_id=user.id,
         payment_method=payment_method,
-        amount=100.0,
+        amount=amount,
         status='Pending'
     )
     db.session.add(new_contrib)
     db.session.commit()
-    flash('Weekly contribution of 100 KES submitted for admin approval.')
+    flash(f'Contribution of {amount} KES submitted for admin approval.')
     return redirect(url_for('dashboard'))
 
 @app.route('/request_loan', methods=['POST'])
@@ -266,8 +298,6 @@ def delete_contribution(contrib_id):
     
     db.session.delete(contrib)
     db.session.commit()
-    
-    # Recalculate balance accurately from remaining approved contributions
     update_user_balance(user_id)
     
     flash('Contribution request removed and balance updated successfully.')
