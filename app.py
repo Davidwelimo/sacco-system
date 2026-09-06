@@ -13,12 +13,19 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
 
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'sacco.db'))
 if db_url and db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif db_url and db_url.startswith("postgresql://") and "+psycopg2" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
 if db_url and "sslmode" not in db_url and "sqlite" not in db_url:
     db_url += "?sslmode=require"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 300,
+}
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static/uploads')
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -347,7 +354,7 @@ def issue_otp(user_id):
     flash(f'OTP for {target.username}: {otp}')
     return redirect(url_for('admin'))
 
-@app.route('/delete_user/<int:user_id>', methods=['Post'])
+@app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
 def delete_user(user_id):
     admin_user = User.query.get(session['user_id'])
