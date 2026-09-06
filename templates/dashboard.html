@@ -135,15 +135,21 @@
                 <th>Your Message</th>
                 <th>Admin Reply</th>
                 <th>Date</th>
+                <th>Action</th>
             </tr>
             {% for f in feedbacks %}
             <tr>
                 <td>{{ f.message }}</td>
                 <td style="color: {% if f.admin_reply %}#28a745{% else %}#ffc107{% endif %};">{{ f.admin_reply or 'Pending admin response...' }}</td>
                 <td>{{ f.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <form action="{{ url_for('delete_feedback', feedback_id=f.id) }}" method="POST" onsubmit="return confirm('Delete this feedback?');">
+                        <button type="submit" class="btn btn-danger" style="padding: 5px 10px;">Delete</button>
+                    </form>
+                </td>
             </tr>
             {% else %}
-            <tr><td colspan="3">You haven't submitted any feedback yet.</td></tr>
+            <tr><td colspan="4">You haven't submitted any feedback yet.</td></tr>
             {% endfor %}
         </table>
     </div>

@@ -18,7 +18,7 @@
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
         .flash { background: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #007bff; }
-        input[type="text"] { padding: 6px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; width: 60%; margin-right: 5px; }
+        input[type="text"] { padding: 6px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; width: 50%; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -97,7 +97,7 @@
                 <th>Member</th>
                 <th>Message</th>
                 <th>Admin Reply</th>
-                <th>Action</th>
+                <th>Actions</th>
             </tr>
             {% for f in feedbacks %}
             <tr>
@@ -105,10 +105,15 @@
                 <td>{{ f.message }}</td>
                 <td>{{ f.admin_reply or 'No reply yet' }}</td>
                 <td>
-                    <form action="{{ url_for('admin_reply_feedback', feedback_id=f.id) }}" method="POST" style="display:flex; align-items:center;">
-                        <input type="text" name="admin_reply" placeholder="Type reply..." value="{{ f.admin_reply or '' }}" required>
-                        <button type="submit" class="btn">Send</button>
-                    </form>
+                    <div style="display:flex; align-items:center; gap: 5px;">
+                        <form action="{{ url_for('admin_reply_feedback', feedback_id=f.id) }}" method="POST" style="display:flex; align-items:center;">
+                            <input type="text" name="admin_reply" placeholder="Type reply..." value="{{ f.admin_reply or '' }}" required>
+                            <button type="submit" class="btn">Send</button>
+                        </form>
+                        <form action="{{ url_for('delete_feedback', feedback_id=f.id) }}" method="POST" onsubmit="return confirm('Delete this feedback?');">
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% else %}

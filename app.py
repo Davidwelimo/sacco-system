@@ -200,6 +200,24 @@ def submit_feedback():
         flash('Feedback submitted successfully!')
     return redirect(url_for('dashboard'))
 
+@app.route('/delete_feedback/<int:feedback_id>', methods=['POST'])
+@login_required
+def delete_feedback(feedback_id):
+    user = User.query.get(session['user_id'])
+    fb = Feedback.query.get_or_404(feedback_id)
+    
+    # Allow deletion if the user is the owner of the feedback or an admin
+    if user.role == 'System Admin' or fb.user_id == user.id:
+        db.session.delete(fb)
+        db.session.commit()
+        flash('Feedback deleted successfully.')
+    else:
+        flash('Unauthorized action.')
+        
+    if user.role == 'System Admin':
+        return redirect(url_for('admin'))
+    return redirect(url_for('dashboard'))
+
 @app.route('/update_settings', methods=['POST'])
 @login_required
 def update_settings():
