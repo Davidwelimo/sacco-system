@@ -27,7 +27,13 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(50), default='Member')
     profile_pic = db.Column(db.String(200), default='default.png')
+    
+    # Balances for different accounts
     weekly_balance = db.Column(db.Float, default=0.0)
+    savings_balance = db.Column(db.Float, default=0.0)
+    loan_repayment_balance = db.Column(db.Float, default=0.0)
+    collateral_balance = db.Column(db.Float, default=0.0)
+
     user_reset = db.Column(db.Boolean, default=False)
     reset_otp = db.Column(db.String(10), nullable=True)
     
@@ -40,7 +46,8 @@ class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     payment_method = db.Column(db.String(50), nullable=False)
-    amount = db.Column(db.Float, nullable=False, default=100.0)
+    account_type = db.Column(db.String(50), nullable=False)  # Weekly Contribution, Personal Savings, Loan Repayment, Collateral Damage
+    amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='Pending')
     date_made = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -74,19 +81,23 @@ def is_contribution_late():
     """Checks if current time is past Sunday 11:59 PM."""
     now = datetime.now()
     weekday = now.weekday()  # 0=Mon, 6=Sun
-    # If Monday through Saturday, it's late
     if weekday != 6:
         return True
-    # If Sunday, check if past 23:59
     if now.hour > 23 or (now.hour == 23 and now.minute > 59):
         return True
     return False
 
-def update_user_balance(user_id):
+def update_user_balances(user_id):
+    """Recalculate balances across all specific accounts based on approved payments."""
     user = User.query.get(user_id)
     if user:
-        approved_contribs = Contribution.query.filter_by(user_id=user_id, status='Approved').all()
-        user.weekly_balance = sum(c.amount for c in approved_contribs)
+        approved = Contribution.query.filter_by(user_id=user_id, status='Approved').all()
+        
+        user.weekly_balance = sum(c.amount for c in approved if c.account_type == 'Weekly Contribution')
+        user.savings_balance = sum(c.amount for c in approved if c.account_type == 'Personal Savings')
+        user.loan_repayment_balance = sum(c.amount for c in approved if c.account_type == 'Loan Repayment')
+        user.collateral_balance = sum(c.amount for c in approved if c.account_type == 'Collateral Damage')
+        
         db.session.commit()
 
 def login_required(f):
@@ -165,6 +176,7 @@ def dashboard():
 def contribute():
     user = User.query.get(session['user_id'])
     payment_method = request.form.get('payment_method', 'Mpesa')
+    account_type = request.form.get('account_type', 'Weekly Contribution')
     
     try:
         amount = float(request.form.get('amount'))
@@ -173,24 +185,43 @@ def contribute():
         return redirect(url_for('dashboard'))
 
     late_status = is_contribution_late()
-    minimum_required = 120.0 if late_status else 100.0
 
-    if amount < minimum_required:
-        if late_status:
-            flash(f'Deadline passed (Sunday 11:59 PM). Late contributions must be 120 KES or above.')
-        else:
-            flash(f'Weekly contribution must be at least 100 KES.')
-        return redirect(url_for('dashboard'))
+    # If paying for weekly contributions, enforce rule: min 100 on time, min 120 late
+    if account_type == 'Weekly Contribution':
+        minimum_required = 120.0 if late_status else 100.0
+        if amount < minimum_required:
+            if late_status:
+                flash(f'Deadline passed (Sunday 11:59 PM). Late weekly contribution must be at least 120 KES.')
+            else:
+                flash(f'Weekly contribution must be at least 100 KES.')
+            return redirect(url_for('dashboard'))
 
+        # If late and paid 120 or more, split: 100 goes to weekly, excess goes to Collateral Damage
+        if late_status and amount >= 120.0:
+            excess = amount - 100.0
+            # Record 100 to Weekly Contribution
+            contrib_weekly = Contribution(user_id=user.id, payment_method=payment_method, account_type='Weekly Contribution', amount=100.0, status='Pending')
+            db.session.add(contrib_weekly)
+            
+            # Record excess to Collateral Damage
+            contrib_collateral = Contribution(user_id=user.id, payment_method=payment_method, account_type='Collateral Damage', amount=excess, status='Pending')
+            db.session.add(contrib_collateral)
+            
+            db.session.commit()
+            flash(f'Late contribution processed: 100 KES routed to Weekly Contributions and {excess} KES routed to Collateral Damage account.')
+            return redirect(url_for('dashboard'))
+
+    # Standard contribution routing for other accounts or on-time payments
     new_contrib = Contribution(
         user_id=user.id,
         payment_method=payment_method,
+        account_type=account_type,
         amount=amount,
         status='Pending'
     )
     db.session.add(new_contrib)
     db.session.commit()
-    flash(f'Contribution of {amount} KES submitted for admin approval.')
+    flash(f'Payment of {amount} KES towards [{account_type}] submitted for admin approval.')
     return redirect(url_for('dashboard'))
 
 @app.route('/request_loan', methods=['POST'])
@@ -269,8 +300,8 @@ def approve_contribution(contrib_id):
     contrib = Contribution.query.get_or_404(contrib_id)
     contrib.status = 'Approved'
     db.session.commit()
-    update_user_balance(contrib.user_id)
-    flash('Contribution approved successfully.')
+    update_user_balances(contrib.user_id)
+    flash('Payment approved successfully.')
     return redirect(url_for('admin'))
 
 @app.route('/reject_contribution/<int:contrib_id>', methods=['POST'])
@@ -282,8 +313,8 @@ def reject_contribution(contrib_id):
     contrib = Contribution.query.get_or_404(contrib_id)
     contrib.status = 'Declined'
     db.session.commit()
-    update_user_balance(contrib.user_id)
-    flash('Contribution rejected.')
+    update_user_balances(contrib.user_id)
+    flash('Payment rejected.')
     return redirect(url_for('admin'))
 
 @app.route('/delete_contribution/<int:contrib_id>', methods=['POST'])
@@ -298,9 +329,9 @@ def delete_contribution(contrib_id):
     
     db.session.delete(contrib)
     db.session.commit()
-    update_user_balance(user_id)
+    update_user_balances(user_id)
     
-    flash('Contribution request removed and balance updated successfully.')
+    flash('Payment record removed and balances updated successfully.')
     return redirect(url_for('admin'))
 
 @app.route('/approve_loan/<int:loan_id>', methods=['POST'])

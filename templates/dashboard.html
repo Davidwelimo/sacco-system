@@ -36,9 +36,13 @@
             <input type="file" name="profile_pic" required style="width: auto;">
             <button type="submit" class="btn">Update Picture</button>
         </form>
-        <h3>Your Savings Balance:</h3>
+        
+        <h3>Your Account Balances (Totals):</h3>
         <ul>
-            <li>Weekly Savings Balance: <strong>{{ user.weekly_balance }} KES</strong></li>
+            <li>Weekly Contributions Balance: <strong>{{ user.weekly_balance }} KES</strong></li>
+            <li>Personal Savings Balance: <strong>{{ user.savings_balance }} KES</strong></li>
+            <li>Loan Repayment Balance: <strong>{{ user.loan_repayment_balance }} KES</strong></li>
+            <li>Collateral Damage Balance: <strong>{{ user.collateral_balance }} KES</strong></li>
         </ul>
         <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
     </div>
@@ -53,31 +57,41 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Make Contribution -->
+    <!-- Make Payment / Contribution -->
     <div class="card">
-        <h3>Make Weekly Contribution</h3>
+        <h3>Make Payment / Contribution</h3>
         {% if is_late %}
-            <p style="color: #dc3545; font-weight: bold;">⚠️ Deadline (Sunday 11:59 PM) has passed. Minimum late contribution is 120 KES (You can pay more).</p>
+            <p style="color: #dc3545; font-weight: bold;">⚠️ Deadline (Sunday 11:59 PM) has passed. Late weekly payments require at least 120 KES (100 KES goes to weekly, excess goes to Collateral Damage).</p>
         {% else %}
-            <p style="color: #28a745;">Minimum weekly contribution is 100 KES (You can pay more).</p>
+            <p style="color: #28a745;">Standard weekly contribution minimum is 100 KES.</p>
         {% endif %}
         <form action="{{ url_for('contribute') }}" method="POST">
+            <label>Payment For (Account):</label>
+            <select name="account_type" required>
+                <option value="Weekly Contribution">Weekly Contribution</option>
+                <option value="Personal Savings">Personal Savings</option>
+                <option value="Loan Repayment">Loan Repayment</option>
+                <option value="Collateral Damage">Collateral Damage</option>
+            </select>
+
             <label>Payment Method:</label>
             <select name="payment_method" required>
                 <option value="Mpesa">M-Pesa</option>
                 <option value="Cash">Cash</option>
             </select>
+
             <label>Amount (KES):</label>
-            <input type="number" step="1" name="amount" min="{{ min_amount }}" value="{{ min_amount }}" required>
-            <button type="submit" class="btn" style="margin-top: 5px;">Pay Weekly Contribution</button>
+            <input type="number" step="1" name="amount" min="1" placeholder="Enter amount" required>
+            <button type="submit" class="btn" style="margin-top: 5px;">Submit Payment</button>
         </form>
     </div>
 
-    <!-- Contribution Statuses -->
+    <!-- Payment Statements & History -->
     <div class="card">
-        <h3>Your Contribution History</h3>
+        <h3>Your Payment Statements & History</h3>
         <table>
             <tr>
+                <th>Account Type</th>
                 <th>Amount</th>
                 <th>Method</th>
                 <th>Status</th>
@@ -85,13 +99,14 @@
             </tr>
             {% for c in contributions %}
             <tr>
+                <td><strong>{{ c.account_type }}</strong></td>
                 <td>{{ c.amount }} KES</td>
                 <td>{{ c.payment_method }}</td>
                 <td style="color: {% if c.status == 'Approved' %}#28a745{% elif c.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ c.status }}</td>
                 <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="4">No contributions made yet.</td></tr>
+            <tr><td colspan="5">No payment statements found yet.</td></tr>
             {% endfor %}
         </table>
     </div>
