@@ -74,27 +74,39 @@
         </table>
     </div>
 
-    <!-- Pending Loans -->
+    <!-- Loan Requests Management -->
     <div class="card">
-        <h3>Pending Loan Requests</h3>
+        <h3>All Member Loan Requests</h3>
         <table>
             <tr>
                 <th>Member</th>
                 <th>Amount</th>
-                <th>Action</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
             </tr>
-            {% for l in pending_loans %}
+            {% for l in all_loans %}
             <tr>
                 <td>{{ l.user.username }}</td>
                 <td>{{ l.amount }} KES</td>
+                <td style="color: {% if l.status == 'Approved' %}#28a745{% elif l.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ l.status }}</td>
+                <td>{{ l.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
                 <td>
+                    {% if l.status == 'Pending' %}
                     <form action="{{ url_for('approve_loan', loan_id=l.id) }}" method="POST" style="display:inline;">
                         <button type="submit" class="btn btn-success">Approve</button>
+                    </form>
+                    <form action="{{ url_for('reject_loan', loan_id=l.id) }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-warning">Reject</button>
+                    </form>
+                    {% endif %}
+                    <form action="{{ url_for('delete_loan', loan_id=l.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Permanently remove this loan request?');">
+                        <button type="submit" class="btn btn-danger">Remove</button>
                     </form>
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="3">No pending loan requests.</td></tr>
+            <tr><td colspan="5">No loan requests found.</td></tr>
             {% endfor %}
         </table>
     </div>

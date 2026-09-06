@@ -131,7 +131,7 @@ def dashboard():
     if user.role == 'System Admin':
         return redirect(url_for('admin'))
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
-    loans = Loan.query.filter_by(user_id=user.id).all()
+    loans = Loan.query.filter_by(user_id=user.id).order_by(Loan.date_submitted.desc()).all()
     feedbacks = Feedback.query.filter_by(user_id=user.id, deleted_by_member=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.filter(User.id != user.id).all()
     return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, feedbacks=feedbacks, members=members)
@@ -272,6 +272,30 @@ def approve_loan(loan_id):
     flash('Loan approved successfully.')
     return redirect(url_for('admin'))
 
+@app.route('/reject_loan/<int:loan_id>', methods=['POST'])
+@login_required
+def reject_loan(loan_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.role != 'System Admin':
+        return redirect(url_for('dashboard'))
+    loan = Loan.query.get_or_404(loan_id)
+    loan.status = 'Declined'
+    db.session.commit()
+    flash('Loan rejected.')
+    return redirect(url_for('admin'))
+
+@app.route('/delete_loan/<int:loan_id>', methods=['POST'])
+@login_required
+def delete_loan(loan_id):
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.role != 'System Admin':
+        return redirect(url_for('dashboard'))
+    loan = Loan.query.get_or_404(loan_id)
+    db.session.delete(loan)
+    db.session.commit()
+    flash('Loan request removed successfully.')
+    return redirect(url_for('admin'))
+
 @app.route('/admin_reply_feedback/<int:feedback_id>', methods=['POST'])
 @login_required
 def admin_reply_feedback(feedback_id):
@@ -313,12 +337,11 @@ def admin():
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role != 'System Admin':
         return redirect(url_for('dashboard'))
-    pending_contribs = Contribution.query.filter_by(status='Pending').all()
     all_contribs = Contribution.query.order_by(Contribution.date_made.desc()).all()
-    pending_loans = Loan.query.filter_by(status='Pending').all()
+    all_loans = Loan.query.order_by(Loan.date_submitted.desc()).all()
     feedbacks = Feedback.query.filter_by(deleted_by_admin=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.all()
-    return render_template('admin.html', pending_contribs=pending_contribs, all_contribs=all_contribs, pending_loans=pending_loans, feedbacks=feedbacks, members=members)
+    return render_template('admin.html', all_contribs=all_contribs, all_loans=all_loans, feedbacks=feedbacks, members=members)
 
 if __name__ == '__main__':
     app.run(debug=True)
