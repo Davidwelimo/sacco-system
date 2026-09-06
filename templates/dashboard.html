@@ -130,11 +130,6 @@
         <div id="contributions" class="tab-content">
             <div class="card">
                 <h3>Make Contribution</h3>
-                {% if is_late %}
-                    <p style="color: #dc2626; font-size: 0.9em; font-weight: bold; margin-bottom: 12px;">Deadline passed! Minimum weekly contribution is {{ min_amount }} KES (100 KES + 20 KES Collateral).</p>
-                {% else %}
-                    <p style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 12px;">Minimum weekly contribution is {{ min_amount }} KES.</p>
-                {% endif %}
                 <form method="POST" action="/contribute">
                     <label>Account Type</label>
                     <select name="account_type">
@@ -199,6 +194,8 @@
                         <tr>
                             <th>Date Requested</th>
                             <th>Amount (KES)</th>
+                            <th>Paid (KES)</th>
+                            <th>Remaining (KES)</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -206,12 +203,18 @@
                         {% for loan in loans %}
                         <tr>
                             <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td>KES {{ loan.amount }}</td>
-                            <td><span style="font-weight: bold; color: {% if loan.status == 'Approved' %}#16a34a{% elif loan.status == 'Declined' %}#dc2626{% else %}#d97706{% endif %};">{{ loan.status }}</span></td>
+                            <td>KES {{ "%.2f"|format(loan.amount) }}</td>
+                            <td style="color: #16a34a; font-weight: bold;">KES {{ "%.2f"|format(loan.paid_so_far) }}</td>
+                            <td style="color: #dc2626; font-weight: bold;">KES {{ "%.2f"|format(loan.remaining_balance) }}</td>
+                            <td>
+                                <span style="font-weight: bold; color: {% if loan.status == 'Approved' and loan.remaining_balance <= 0 %}#16a34a{% elif loan.status == 'Approved' %}#d97706{% elif loan.status == 'Declined' %}#dc2626{% else %}#d97706{% endif %};">
+                                    {% if loan.status == 'Approved' and loan.remaining_balance <= 0 %}Fully Paid{% elif loan.status == 'Approved' %}Active (Partial){% else %}{{ loan.status }}{% endif %}
+                                </span>
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="3" style="text-align:center; color: var(--text-muted);">No loan history found.</td>
+                            <td colspan="5" style="text-align:center; color: var(--text-muted);">No loan history found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -223,7 +226,7 @@
         <div id="feedback" class="tab-content">
             <div class="card">
                 <h3>Send Support Message / Feedback</h3>
-                <form method="POST" action="/send_feedback">
+                <form method="POST" action="/submit_feedback">
                     <label>Your Message</label>
                     <textarea name="message" rows="4" placeholder="Type your issue or feedback here..." required></textarea>
                     <button type="submit" class="btn">Send Message</button>
