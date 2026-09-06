@@ -112,6 +112,55 @@ def update_user_balances(user_id):
         user.collateral_balance = sum(c.amount for c in approved if c.account_type == 'Collateral Damage')
         db.session.commit()
 
+def get_loans_for_user(user_id):
+    user_loans = Loan.query.filter_by(user_id=user_id).order_by(Loan.date_submitted.asc()).all()
+    total_repaid = sum(c.amount for c in Contribution.query.filter_by(user_id=user_id, account_type='Loan Repayment', status='Approved').all())
+    rem_rep = total_repaid
+    processed = []
+    for loan in user_loans:
+        if loan.status == 'Approved':
+            paid = min(loan.amount, rem_rep)
+            rem_rep -= paid
+            rem_bal = loan.amount - paid
+        else:
+            paid = 0.0
+            rem_bal = loan.amount
+        processed.append({
+            'id': loan.id,
+            'date_submitted': loan.date_submitted,
+            'amount': loan.amount,
+            'paid_so_far': paid,
+            'remaining_balance': rem_bal,
+            'status': loan.status
+        })
+    return list(reversed(processed))
+
+def get_all_admin_loans():
+    loans_list = []
+    for user in User.query.all():
+        user_loans = Loan.query.filter_by(user_id=user.id).order_by(Loan.date_submitted.asc()).all()
+        total_repaid = sum(c.amount for c in Contribution.query.filter_by(user_id=user.id, account_type='Loan Repayment', status='Approved').all())
+        rem_rep = total_repaid
+        for loan in user_loans:
+            if loan.status == 'Approved':
+                paid = min(loan.amount, rem_rep)
+                rem_rep -= paid
+                rem_bal = loan.amount - paid
+            else:
+                paid = 0.0
+                rem_bal = loan.amount
+            loans_list.append({
+                'id': loan.id,
+                'user': user,
+                'date_submitted': loan.date_submitted,
+                'amount': loan.amount,
+                'paid_so_far': paid,
+                'remaining_balance': rem_bal,
+                'status': loan.status
+            })
+    loans_list.sort(key=lambda x: x['date_submitted'], reverse=True)
+    return loans_list
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -235,21 +284,7 @@ def dashboard():
     min_amount = 120.0 if late_status else 100.0
 
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
-    
-    # Process Loans with Partial Repayment Calculations
-    raw_loans = Loan.query.filter_by(user_id=user.id).order_by(Loan.date_submitted.desc()).all()
-    loans = []
-    for loan in raw_loans:
-        paid_so_far = sum(c.amount for c in Contribution.query.filter_by(user_id=user.id, account_type='Loan Repayment', status='Approved').all())
-        remaining_balance = max(0.0, loan.amount - paid_so_far)
-        loans.append({
-            'date_submitted': loan.date_submitted,
-            'amount': loan.amount,
-            'paid_so_far': paid_so_far,
-            'remaining_balance': remaining_balance,
-            'status': loan.status
-        })
-
+    loans = get_loans_for_user(user.id)
     feedbacks = Feedback.query.filter_by(user_id=user.id, deleted_by_member=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.filter(User.id != user.id).all()
     
@@ -443,7 +478,7 @@ def admin():
     if not admin_user or admin_user.role != 'System Admin': return redirect(url_for('dashboard'))
     return render_template('admin.html', 
                            all_contribs=Contribution.query.order_by(Contribution.date_made.desc()).all(), 
-                           all_loans=Loan.query.order_by(Loan.date_submitted.desc()).all(), 
+                           all_loans=get_all_admin_loans(), 
                            feedbacks=Feedback.query.filter_by(deleted_by_admin=False).order_by(Feedback.date_submitted.desc()).all(), 
                            members=User.query.all())
 
