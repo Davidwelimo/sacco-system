@@ -32,7 +32,8 @@
         <div style="margin-bottom: 15px;">
             <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" width="80" height="80" style="border-radius: 50%; object-fit: cover; border: 2px solid #007bff;">
         </div>
-        <form action="{{ url_for('upload_profile_pic') }}" method="POST" enctype="multipart/form-data" style="margin-bottom: 15px;">
+        <!-- Fixed: Changed url_for to update_settings -->
+        <form action="{{ url_for('update_settings') }}" method="POST" enctype="multipart/form-data" style="margin-bottom: 15px;">
             <input type="file" name="profile_pic" required>
             <button type="submit" class="btn">Update Picture</button>
         </form>
