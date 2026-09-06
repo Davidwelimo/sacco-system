@@ -12,7 +12,7 @@
         .sidebar { width: 260px; background: var(--sidebar-bg); color: white; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
         .sidebar-brand { padding: 20px; font-weight: bold; font-size: 1.1em; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
         .sidebar-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
-        .sidebar-menu li a { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; color: #cbd5e1; text-decoration: none; font-size: 0.95em; transition: 0.2s; }
+        .sidebar-menu li a { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; color: #cbd5e1; text-decoration: none; font-size: 0.95em; transition: 0.2s; cursor: pointer; }
         .sidebar-menu li.active a, .sidebar-menu li a:hover { background: var(--active-bg); color: white; }
         .sidebar-footer { padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); }
         .sidebar-footer a { color: #cbd5e1; text-decoration: none; display: block; font-size: 0.95em; }
@@ -20,6 +20,10 @@
         /* Main Content */
         .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; }
         
+        /* Tab Sections */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
         /* Welcome Banner */
         .welcome-card { background: var(--card-bg); border-radius: 12px; padding: 25px 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
         .welcome-subtitle { color: #0284c7; font-size: 0.8em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
@@ -34,13 +38,12 @@
         .metric-title { font-size: 0.75em; color: var(--text-muted); font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
         .metric-value { font-size: 1.5em; font-weight: bold; margin: 0; }
 
-        /* General Card Sections */
-        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        /* General Cards */
         .card { background: var(--card-bg); border-radius: 12px; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid var(--border); margin-bottom: 20px; }
         .card h3 { margin-top: 0; font-size: 1.1em; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
         
         /* Forms & Buttons */
-        input, select { width: 100%; padding: 10px; margin: 8px 0 15px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-main); border-radius: 6px; box-sizing: border-box; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 8px 0 15px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-main); border-radius: 6px; box-sizing: border-box; }
         button.btn { background: #0284c7; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
         button.btn:hover { background: #0369a1; }
         .flash { color: #dc2626; font-size: 0.85em; margin-bottom: 10px; font-weight: bold; }
@@ -63,10 +66,10 @@
                 <span>&lt;</span>
             </div>
             <ul class="sidebar-menu">
-                <li class="active"><a href="/dashboard">Dashboard <span>📊</span></a></li>
-                <li><a href="#contributions">Contributions <span>💰</span></a></li>
-                <li><a href="#loans">Loans <span>📋</span></a></li>
-                <li><a href="#feedback">Support & Feedback <span>💬</span></a></li>
+                <li class="menu-item active" onclick="switchTab('dashboard', this)"><a>Dashboard <span>📊</span></a></li>
+                <li class="menu-item" onclick="switchTab('contributions', this)"><a>Contributions <span>💰</span></a></li>
+                <li class="menu-item" onclick="switchTab('loans', this)"><a>Loans <span>📋</span></a></li>
+                <li class="menu-item" onclick="switchTab('feedback', this)"><a>Support & Feedback <span>💬</span></a></li>
             </ul>
         </div>
         <div class="sidebar-footer">
@@ -85,41 +88,47 @@
             {% endif %}
         {% endwith %}
 
-        <!-- Welcome Banner -->
-        <div class="welcome-card">
-            <div>
-                <div class="welcome-subtitle">Member Portal</div>
-                <h1>Welcome back, {{ user.username | upper }}</h1>
+        <!-- TAB 1: DASHBOARD -->
+        <div id="dashboard" class="tab-content active">
+            <div class="welcome-card">
+                <div>
+                    <div class="welcome-subtitle">Member Portal</div>
+                    <h1>Welcome back, {{ user.username | upper }}</h1>
+                </div>
+                <div>
+                    <span class="badge">Role: {{ user.role }}</span>
+                </div>
             </div>
-            <div>
-                <span class="badge">Role: {{ user.role }}</span>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Weekly Balance</div>
+                    <p class="metric-value">KES {{ "%.2f"|format(user.weekly_balance) }}</p>
+                </div>
+                <div class="metric-card green">
+                    <div class="metric-title">Savings Balance</div>
+                    <p class="metric-value">KES {{ "%.2f"|format(user.savings_balance) }}</p>
+                </div>
+                <div class="metric-card red">
+                    <div class="metric-title">Collateral Balance</div>
+                    <p class="metric-value">KES {{ "%.2f"|format(user.collateral_balance) }}</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Account Summary Overview</h3>
+                <p>Select items from the left sidebar to manage your contributions, request loans, or send support feedback.</p>
             </div>
         </div>
 
-        <!-- Metrics Row -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-title">Weekly Balance</div>
-                <p class="metric-value">KES {{ "%.2f"|format(user.weekly_balance) }}</p>
-            </div>
-            <div class="metric-card green">
-                <div class="metric-title">Savings Balance</div>
-                <p class="metric-value">KES {{ "%.2f"|format(user.savings_balance) }}</p>
-            </div>
-            <div class="metric-card red">
-                <div class="metric-title">Collateral Balance</div>
-                <p class="metric-value">KES {{ "%.2f"|format(user.collateral_balance) }}</p>
-            </div>
-        </div>
-
-        <!-- Action / Forms Section -->
-        <div class="card-grid">
-            <div class="card" id="contributions">
+        <!-- TAB 2: CONTRIBUTIONS -->
+        <div id="contributions" class="tab-content">
+            <div class="card">
                 <h3>Make Contribution</h3>
                 <form method="POST" action="/contribute">
                     <label>Account Type</label>
                     <select name="account_type">
-                        <option value="Weekly Contribution">Weekly Contribution (Min: {{ min_amount }} KES)</option>
+                        <option value="Weekly Contribution">Weekly Contribution</option>
                         <option value="Personal Savings">Personal Savings</option>
                         <option value="Loan Repayment">Loan Repayment</option>
                         <option value="Collateral Damage">Collateral Damage</option>
@@ -135,47 +144,69 @@
                 </form>
             </div>
 
-            <div class="card" id="loans">
+            <div class="card">
+                <h3>Contributions History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Account Type</th>
+                            <th>Method</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in contributions %}
+                        <tr>
+                            <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ c.account_type }}</td>
+                            <td>{{ c.payment_method }}</td>
+                            <td>KES {{ c.amount }}</td>
+                            <td><span style="font-weight: bold; color: {% if c.status == 'Approved' %}#16a34a{% elif c.status == 'Declined' %}#dc2626{% else %}#d97706{% endif %};">{{ c.status }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">No contributions recorded yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: LOANS -->
+        <div id="loans" class="tab-content">
+            <div class="card">
                 <h3>Request a Loan</h3>
                 <form method="POST" action="/request_loan">
                     <label>Loan Amount (KES)</label>
                     <input type="number" step="0.01" name="amount" placeholder="Enter requested amount" required>
-                    <button type="submit" class="btn" style="background: #16a34a; margin-top: 35px;">Submit Loan Request</button>
+                    <button type="submit" class="btn" style="background: #16a34a; margin-top: 15px;">Submit Loan Request</button>
                 </form>
             </div>
         </div>
 
-        <!-- Transaction History Table -->
-        <div class="card">
-            <h3>Recent Contributions History</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Account Type</th>
-                        <th>Method</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in contributions %}
-                    <tr>
-                        <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>{{ c.account_type }}</td>
-                        <td>{{ c.payment_method }}</td>
-                        <td>KES {{ c.amount }}</td>
-                        <td><span style="font-weight: bold; color: {% if c.status == 'Approved' %}#16a34a{% elif c.status == 'Declined' %}#dc2626{% else %}#d97706{% endif %};">{{ c.status }}</span></td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">No contributions recorded yet.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- TAB 4: SUPPORT & FEEDBACK -->
+        <div id="feedback" class="tab-content">
+            <div class="card">
+                <h3>Send Support Message / Feedback</h3>
+                <form method="POST" action="/send_feedback">
+                    <label>Your Message</label>
+                    <textarea name="message" rows="4" placeholder="Type your issue or feedback here..." required></textarea>
+                    <button type="submit" class="btn">Send Message</button>
+                </form>
+            </div>
         </div>
     </div>
 
     <script>
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            element.classList.add('active');
+        }
+
         if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
