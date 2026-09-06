@@ -14,6 +14,8 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key')
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'sacco.db'))
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
+if db_url and "sslmode" not in db_url and "sqlite" not in db_url:
+    db_url += "?sslmode=require"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -74,15 +76,12 @@ class Feedback(db.Model):
     deleted_by_admin = db.Column(db.Boolean, default=False)
 
 with app.app_context():
-    try:
-        db.create_all()
-        if not User.query.filter_by(username='admin').first():
-            hashed_pw = generate_password_hash('admin123', method='scrypt')
-            default_admin = User(username='admin', email='admin@sacco.com', phone_number='0700000000', role='System Admin', password=hashed_pw)
-            db.session.add(default_admin)
-            db.session.commit()
-    except Exception as e:
-        print(f"DB Init Error: {e}")
+    db.create_all()
+    if not User.query.filter_by(username='admin').first():
+        hashed_pw = generate_password_hash('admin123', method='scrypt')
+        default_admin = User(username='admin', email='admin@sacco.com', phone_number='0700000000', role='System Admin', password=hashed_pw)
+        db.session.add(default_admin)
+        db.session.commit()
 
 def is_contribution_late():
     now = datetime.now()
@@ -160,6 +159,9 @@ def logout():
 @login_required
 def dashboard():
     user = User.query.get(session['user_id'])
+    if not user:
+        session.pop('user_id', None)
+        return redirect(url_for('login'))
     if user.role == 'System Admin':
         return redirect(url_for('admin'))
     
@@ -345,7 +347,7 @@ def issue_otp(user_id):
     flash(f'OTP for {target.username}: {otp}')
     return redirect(url_for('admin'))
 
-@app.route('/delete_user/<int:user_id>', methods=['POST'])
+@app.route('/delete_user/<int:user_id>', methods=['Post'])
 @login_required
 def delete_user(user_id):
     admin_user = User.query.get(session['user_id'])
