@@ -41,7 +41,6 @@
             <li>Weekly Savings: <strong>{{ user.weekly_balance }} KES</strong></li>
             <li>Monthly Savings: <strong>{{ user.monthly_balance }} KES</strong></li>
             <li>Meeting Savings: <strong>{{ user.meeting_balance }} KES</strong></li>
-            <li>Emergency Fund: <strong>{{ user.emergency_balance }} KES</strong></li>
         </ul>
         <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
     </div>
@@ -69,23 +68,6 @@
             <label>Amount (KES):</label>
             <input type="number" step="0.01" name="amount" placeholder="Amount" required>
             <button type="submit" class="btn">Pay Contribution</button>
-        </form>
-        <p style="font-size: 0.85em; color: #aaa; margin-top: 8px;">*Note: Amounts exceeding standard rates will automatically be routed to your Emergency Fund.</p>
-    </div>
-
-    <!-- Pay Contribution Using Emergency Fund (Fixed endpoint name) -->
-    <div class="card">
-        <h3>Pay Contribution Using Emergency Fund</h3>
-        <form action="{{ url_for('pay_emergency') }}" method="POST">
-            <label>Contribution Type:</label>
-            <select name="type" required>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="meeting">Meeting</option>
-            </select>
-            <label>Amount (KES):</label>
-            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-            <button type="submit" class="btn">Use Emergency Fund</button>
         </form>
     </div>
 
@@ -135,36 +117,13 @@
         </table>
     </div>
 
-    <!-- Transfer Emergency Fund -->
+    <!-- Feedback -->
     <div class="card">
-        <h3>Transfer Emergency Fund to Friend</h3>
-        <form action="{{ url_for('transfer_emergency') }}" method="POST">
-            <select name="recipient_id" required>
-                <option value="">Select Friend</option>
-                {% for m in members %}
-                <option value="{{ m.id }}">{{ m.username }}</option>
-                {% endfor %}
-           </select>
-            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-            <button type="submit" class="btn">Request Transfer</button>
+        <h3>Submit Feedback</h3>
+        <form action="{{ url_for('submit_feedback') }}" method="POST">
+            <textarea name="message" placeholder="Type your feedback or comments here..." rows="3" required></textarea>
+            <button type="submit" class="btn">Send Feedback</button>
         </form>
-        <h4 style="margin-top: 15px;">Your Emergency Transfer Requests</h4>
-        <table>
-            <tr>
-                <th>Recipient</th>
-                <th>Amount</th>
-                <th>Status</th>
-            </tr>
-            {% for t in transfers %}
-            <tr>
-                <td>{{ t.recipient.username }}</td>
-                <td>{{ t.amount }} KES</td>
-                <td style="color: {% if t.status == 'Approved' %}#28a745{% elif t.status == 'Declined' %}#dc3545{% else %}#ffc107{% endif %};">{{ t.status }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="3">No emergency transfers made yet.</td></tr>
-            {% endfor %}
-        </table>
     </div>
 </body>
 </html>
