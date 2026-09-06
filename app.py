@@ -254,10 +254,20 @@ def delete_contribution(contrib_id):
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role != 'System Admin':
         return redirect(url_for('dashboard'))
+    
     contrib = Contribution.query.get_or_404(contrib_id)
+    
+    # If the contribution was already approved, subtract it from the user's balance before deleting
+    if contrib.status == 'Approved':
+        member = User.query.get(contrib.user_id)
+        if member:
+            member.weekly_balance -= contrib.amount
+            if member.weekly_balance < 0:
+                member.weekly_balance = 0.0
+
     db.session.delete(contrib)
     db.session.commit()
-    flash('Contribution request removed successfully.')
+    flash('Contribution request removed and balance updated successfully.')
     return redirect(url_for('admin'))
 
 @app.route('/approve_loan/<int:loan_id>', methods=['POST'])
