@@ -2,44 +2,77 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - SACCO</title>
+    <style>
+        :root { --primary: #1e3a8a; --success: #059669; --danger: #dc2626; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        header { background-color: var(--primary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        header a { color: #93c5fd; text-decoration: none; margin-left: 15px; font-weight: 500; }
+        header a:hover { color: white; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .alert { background: #dbeafe; border-left: 4px solid var(--primary); padding: 10px 15px; margin-bottom: 1.5rem; border-radius: 4px; color: #1e40af; }
+        .section-box { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h3 { color: var(--primary); margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        th { background-color: #f1f5f9; color: #334155; }
+        button { padding: 0.4rem 0.8rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: white; }
+        .btn-approve { background-color: var(--success); }
+        .btn-reject { background-color: #d97706; }
+        .btn-delete { background-color: var(--danger); }
+        input, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem; }
+    </style>
 </head>
 <body>
-    <h2>Leadership Admin Panel</h2>
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul>{% for msg in messages %}<li>{{ msg }}</li>{% endfor %}</ul>
-      {% endif %}
-    {% endwith %}
-    
-    <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a> | <a href="{{ url_for('logout') }}">Logout</a></p>
+    <header>
+        <h2>Leadership Admin Panel</h2>
+        <div>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </header>
 
-    <h3>Manage Contributions</h3>
-    <table border="1">
-        <tr><th>User</th><th>Type</th><th>Amount</th><th>Status</th><th>Action</th></tr>
-        {% for c in all_contribs %}
-        <tr>
-            <td>{{ c.user_id }}</td>
-            <td>{{ c.account_type }}</td>
-            <td>{{ c.amount }}</td>
-            <td>{{ c.status }}</td>
-            <td>
-                {% if c.status == 'Pending' %}
-                <form action="{{ url_for('approve_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit">Approve</button></form>
-                <form action="{{ url_for('reject_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit">Reject</button></form>
-                {% endif %}
-                <form action="{{ url_for('delete_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit">Delete</button></form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert">
+                {% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
 
-    <h3>Publish Announcement</h3>
-    <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
-        <input type="text" name="title" placeholder="Title" required><br>
-        <textarea name="content" placeholder="Content" required></textarea><br>
-        <input type="file" name="file"><br>
-        <button type="submit">Publish</button>
-    </form>
+        <div class="section-box">
+            <h3>Manage Contributions</h3>
+            <table>
+                <tr><th>ID</th><th>Type</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+                {% for c in all_contribs %}
+                <tr>
+                    <td>{{ c.id }}</td>
+                    <td>{{ c.account_type }}</td>
+                    <td>{{ c.amount }} KES</td>
+                    <td>{{ c.status }}</td>
+                    <td>
+                        {% if c.status == 'Pending' %}
+                        <form action="{{ url_for('approve_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-approve">Approve</button></form>
+                        <form action="{{ url_for('reject_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-reject">Reject</button></form>
+                        {% endif %}
+                        <form action="{{ url_for('delete_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-delete">Delete</button></form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="section-box">
+            <h3>Publish Announcement</h3>
+            <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
+                <input type="text" name="title" placeholder="Announcement Title" required>
+                <textarea name="content" rows="3" placeholder="Announcement Content" required></textarea>
+                <input type="file" name="file">
+                <button type="submit" style="background-color: var(--primary);">Publish Announcement</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

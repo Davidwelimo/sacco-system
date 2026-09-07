@@ -3,16 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <title>Select Role</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; border: 1px solid #e2e8f0; text-align: center; }
+        h2 { color: #1e3a8a; margin-top: 0; }
+        button { width: 100%; background-color: #059669; color: white; border: none; padding: 0.75rem; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 1rem; }
+        button:hover { background-color: #047857; }
+        .links { margin-top: 1rem; font-size: 0.9rem; }
+        .links a { color: #2563eb; text-decoration: none; margin: 0 5px; }
+    </style>
 </head>
 <body>
-    <h2>Welcome, {{ user.username }}</h2>
-    <p>Your assigned role is: <strong>{{ user.role }}</strong></p>
-    <form method="POST">
-        <button type="submit">Proceed to Dashboard</button>
-    </form>
-    {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
-        <p><a href="{{ url_for('admin') }}">Go to Admin Panel</a></p>
-    {% endif %}
-    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+    <div class="card">
+        <h2>Welcome, {{ user.username }}</h2>
+        <p>Assigned Role: <strong>{{ user.role }}</strong></p>
+        <form method="POST">
+            <button type="submit">Proceed to Dashboard</button>
+        </form>
+        <div class="links">
+            {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
+                <a href="{{ url_for('admin') }}">Admin Panel</a> | 
+            {% endif %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
 </body>
 </html>

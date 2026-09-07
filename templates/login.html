@@ -2,55 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>RICH MERCHANTS - Login</title>
+    <title>Login - SACCO</title>
     <style>
-        :root { --bg: #f4f6f9; --card: #ffffff; --text: #333333; --border: #cccccc; }
-        body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --border: #444444; }
-        body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: var(--card); padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 320px; border: 1px solid var(--border); }
-        h2 { text-align: center; margin-top: 0; }
-        input { width: 100%; padding: 10px; margin: 8px 0 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; margin-bottom: 15px; border-radius: 4px; cursor: pointer; float: right; }
-        .flash { color: red; font-size: 0.85em; text-align: center; margin-bottom: 10px; }
-        .links { text-align: center; margin-top: 15px; font-size: 0.85em; }
-        .links a { color: #007bff; text-decoration: none; }
-        .logo-container { text-align: center; margin-bottom: 15px; clear: both; }
-        .logo-container img { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid #28a745; margin-bottom: 5px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; border: 1px solid #e2e8f0; }
+        h2 { color: #1e3a8a; margin-top: 0; }
+        .alert { background: #dbeafe; color: #1e40af; padding: 10px; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #334155; }
+        input { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; background-color: #1e3a8a; color: white; border: none; padding: 0.75rem; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 1rem; }
+        button:hover { background-color: #1d4ed8; }
+        .links { margin-top: 1rem; text-align: center; font-size: 0.9rem; }
+        .links a { color: #2563eb; text-decoration: none; }
     </style>
 </head>
 <body>
     <div class="card">
-        <button type="button" class="toggle-btn" onclick="toggleTheme()">🌓 Theme</button>
-        <div style="clear:both;"></div>
-        <div class="logo-container">
-            <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=150&auto=format&fit=crop&q=80" alt="Real Estate Logo">
-            <h2 style="margin: 0; font-size: 1.4em; letter-spacing: 0.5px;">RICH MERCHANTS</h2>
-        </div>
+        <h2>Login to SACCO</h2>
         {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
-            {% endif %}
+          {% if messages %}
+            <div class="alert">{% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}</div>
+          {% endif %}
         {% endwith %}
-        <form method="POST" action="/login">
-            <label>Username</label>
-            <input type="text" name="username" required>
-            <label>Password</label>
-            <input type="password" name="password" required>
-            <button type="submit">Log In</button>
+        <form method="POST">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit">Login</button>
         </form>
         <div class="links">
-            <p><a href="/register">Create an Account</a></p>
-            <!-- Pointing correctly to your OTP reset route or view -->
-            <p><a href="/reset_password_otp">Forgot Password? Reset via OTP</a></p>
+            <p>Don't have an account? <a href="{{ url_for('register') }}">Register</a></p>
+            <p><a href="{{ url_for('reset_password_otp') }}">Reset Password via OTP</a></p>
         </div>
     </div>
-    <script>
-        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-        }
-    </script>
 </body>
 </html>

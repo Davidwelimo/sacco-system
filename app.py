@@ -3,7 +3,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
-import random
 from models import db, User, Contribution, Loan, Feedback, Announcement
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -262,34 +261,18 @@ def submit_feedback():
     if message:
         db.session.add(Feedback(user_id=user.id, message=message))
         db.session.commit()
-        flash('Feedback submitted successfully!')
+        flash('Feedback submitted successfully.')
     return redirect(url_for('dashboard'))
 
-@app.route('/delete_feedback/<int:feedback_id>', methods=['POST'])
-def delete_feedback(feedback_id):
+@app.route('/delete_feedback_member/<int:feedback_id>', methods=['POST'])
+def delete_feedback_member(feedback_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     feedback = Feedback.query.get_or_404(feedback_id)
-    user = User.query.get(session['user_id'])
-    if feedback.user_id == user.id:
+    if feedback.user_id == session['user_id']:
         feedback.deleted_by_member = True
-    elif user.role in LEADERSHIP_ROLES:
-        feedback.deleted_by_admin = True
-    db.session.commit()
-    return redirect(url_for('admin') if user.role in LEADERSHIP_ROLES else url_for('dashboard'))
-
-@app.route('/update_settings', methods=['POST'])
-def update_settings():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    user = User.query.get(session['user_id'])
-    file = request.files.get('profile_pic')
-    if file and file.filename != '' and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        user.profile_pic = f"uploads/{filename}"
-    db.session.commit()
-    flash('Profile updated!')
+        db.session.commit()
+        flash('Feedback removed.')
     return redirect(url_for('dashboard'))
 
 @app.route('/publish_announcement', methods=['POST'])
@@ -353,86 +336,6 @@ def delete_contrib(contrib_id):
     db.session.commit()
     update_user_balances(uid)
     flash('Contribution deleted.')
-    return redirect(url_for('admin'))
-
-@app.route('/approve_loan/<int:loan_id>', methods=['POST'])
-def approve_loan(loan_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
-        return redirect(url_for('dashboard'))
-    loan = Loan.query.get_or_404(loan_id)
-    loan.status = 'Approved'
-    db.session.commit()
-    flash('Loan approved.')
-    return redirect(url_for('admin'))
-
-@app.route('/reject_loan/<int:loan_id>', methods=['POST'])
-def reject_loan(loan_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
-        return redirect(url_for('dashboard'))
-    loan = Loan.query.get_or_404(loan_id)
-    loan.status = 'Declined'
-    db.session.commit()
-    flash('Loan declined.')
-    return redirect(url_for('admin'))
-
-@app.route('/delete_loan/<int:loan_id>', methods=['POST'])
-def delete_loan(loan_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
-        return redirect(url_for('dashboard'))
-    loan = Loan.query.get_or_404(loan_id)
-    db.session.delete(loan)
-    db.session.commit()
-    flash('Loan deleted.')
-    return redirect(url_for('admin'))
-
-@app.route('/admin_reply_feedback/<int:feedback_id>', methods=['POST'])
-def admin_reply_feedback(feedback_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
-        return redirect(url_for('dashboard'))
-    feedback = Feedback.query.get_or_404(feedback_id)
-    feedback.admin_reply = request.form.get('admin_reply')
-    db.session.commit()
-    flash('Reply saved.')
-    return redirect(url_for('admin'))
-
-@app.route('/issue_otp/<int:user_id>', methods=['POST'])
-def issue_otp(user_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
-        return redirect(url_for('dashboard'))
-    target_user = User.query.get_or_404(user_id)
-    target_otp = str(random.randint(100000, 999999))
-    target_user.reset_otp = target_otp
-    target_user.reset_otp_requested = True
-    db.session.commit()
-    flash(f'OTP for {target_user.username}: {target_otp}')
-    return redirect(url_for('admin'))
-
-@app.route('/delete_user/<int:user_id>', methods=['POST'])
-def delete_user(user_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
-        return redirect(url_for('dashboard'))
-    target_user = User.query.get_or_404(user_id)
-    db.session.delete(target_user)
-    db.session.commit()
-    flash('User deleted.')
     return redirect(url_for('admin'))
 
 @app.route('/admin')
