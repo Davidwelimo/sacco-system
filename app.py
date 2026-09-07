@@ -267,12 +267,12 @@ def dashboard():
     if not user:
         session.pop('user_id', None)
         return redirect(url_for('login'))
-    if user.role == 'System Admin':
-        return redirect(url_for('admin'))
+
+    # (Ensure the System Admin redirect lines are completely gone here)
 
     late_status = is_contribution_late()
     min_amount = 120.0 if late_status else 100.0
-
+    
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
     loans = get_loans_for_user(user.id)
     feedbacks = Feedback.query.filter_by(user_id=user.id, deleted_by_member=False).order_by(Feedback.date_submitted.desc()).all()
