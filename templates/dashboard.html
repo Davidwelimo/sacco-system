@@ -5,110 +5,209 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Member Dashboard - SACCO</title>
     <style>
-        :root { --primary: #1e3a8a; --success: #059669; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
-        header { background-color: var(--primary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        header a { color: #93c5fd; text-decoration: none; margin-left: 15px; font-weight: 500; }
-        header a:hover { color: white; }
-        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        :root { 
+            --primary: #1e3a8a; 
+            --success: #059669; 
+            --danger: #dc2626; 
+            --bg: #f8fafc; 
+            --card-bg: #ffffff; 
+            --text: #1e293b; 
+            --border: #e2e8f0;
+            --sidebar-bg: #1e293b;
+            --sidebar-hover: #334155;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Styles */
+        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
+        .sidebar-brand { padding: 1.5rem; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; }
+        .sidebar-menu li a { display: block; padding: 1rem 1.5rem; color: #cbd5e1; text-decoration: none; transition: 0.2s; font-size: 0.95rem; }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active { background-color: var(--sidebar-hover); color: white; border-left: 4px solid #3b82f6; }
+        .sidebar-footer { padding: 1.5rem; border-top: 1px solid #334155; }
+        .sidebar-footer a { color: #f87171; text-decoration: none; font-weight: 500; }
+
+        /* Main Content Wrapper */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        header { background-color: white; color: var(--text); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        header h2 { margin: 0; font-size: 1.3rem; color: var(--primary); }
+        header div a { color: var(--primary); text-decoration: none; margin-left: 15px; font-weight: 600; font-size: 0.9rem; }
+        header div a:hover { text-decoration: underline; }
+
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; width: 100%; box-sizing: border-box; }
         .alert { background: #dbeafe; border-left: 4px solid var(--primary); padding: 10px 15px; margin-bottom: 1.5rem; border-radius: 4px; color: #1e40af; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-        .card { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--border); }
-        .card h3 { margin-top: 0; color: var(--primary); font-size: 1.0rem; }
-        .card .amount { font-size: 1.4rem; font-weight: bold; color: var(--success); }
-        .forms-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; }
-        form { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        form h3 { margin-top: 0; color: var(--primary); }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        input, select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; }
-        button { background-color: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-weight: 600; width: 100%; }
+        
+        .balances-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .balance-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left; }
+        .balance-card h4 { margin: 0 0 0.5rem 0; color: #64748b; font-size: 0.85rem; text-transform: uppercase; }
+        .balance-card p { margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+        
+        .section-box { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        h3 { color: var(--primary); margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
+        
+        button { padding: 0.75rem 1.25rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: white; background-color: var(--primary); transition: background 0.2s; }
         button:hover { background-color: #1d4ed8; }
-        .section-box { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-top: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem; font-family: inherit; font-size: 0.9rem; }
+        label { display: block; margin-bottom: 0.4rem; font-weight: 500; font-size: 0.9rem; color: #334155; }
     </style>
 </head>
 <body>
-    <header>
-        <h2>SACCO Portal</h2>
+
+    <!-- Left Dark Sidebar -->
+    <div class="sidebar">
         <div>
-            <span>Welcome, <strong>{{ user.username }}</strong></span>
-            {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
-                <a href="{{ url_for('admin') }}">Admin Panel</a>
-            {% endif %}
+            <div class="sidebar-brand">
+                <span>🏛️ SACCO Portal</span>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
+                {% if user.role in ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager'] %}
+                <li><a href="{{ url_for('admin') }}">Admin Panel</a></li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="sidebar-footer">
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
-    </header>
+    </div>
 
-    <div class="container">
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <div class="alert">
-                {% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <header>
+            <h2>Welcome, {{ user.username }} ({{ user.role }})</h2>
+            <div>
+                {% if user.role in ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager'] %}
+                <a href="{{ url_for('admin') }}">Admin Panel</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" style="color: var(--danger);">Logout</a>
             </div>
-          {% endif %}
-        {% endwith %}
+        </header>
 
-        <h2>Account Balances</h2>
-        <div class="grid">
-            <div class="card">
-                <h3>Weekly Contribution</h3>
-                <div class="amount">{{ user.weekly_balance }} KES</div>
-            </div>
-            <div class="card">
-                <h3>Personal Savings</h3>
-                <div class="amount">{{ user.savings_balance }} KES</div>
-            </div>
-            <div class="card">
-                <h3>Loan Repayment</h3>
-                <div class="amount">{{ user.loan_repayment_balance }} KES</div>
-            </div>
-            <div class="card">
-                <h3>Collateral Damage</h3>
-                <div class="amount">{{ user.collateral_balance }} KES</div>
-            </div>
-        </div>
+        <div class="container">
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="alert">
+                    {% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
 
-        <div class="forms-grid">
-            <form action="{{ url_for('contribute') }}" method="POST">
-                <h3>Make a Contribution</h3>
-                <div class="form-group">
+            <div class="balances-grid">
+                <div class="balance-card">
+                    <h4>Weekly Balance</h4>
+                    <p>{{ user.weekly_balance }} KES</p>
+                </div>
+                <div class="balance-card">
+                    <h4>Personal Savings</h4>
+                    <p>{{ user.savings_balance }} KES</p>
+                </div>
+                <div class="balance-card">
+                    <h4>Loan Repayment</h4>
+                    <p>{{ user.loan_repayment_balance }} KES</p>
+                </div>
+                <div class="balance-card">
+                    <h4>Collateral Damage</h4>
+                    <p>{{ user.collateral_balance }} KES</p>
+                </div>
+            </div>
+
+            {% if user.role in ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager'] %}
+            <div class="section-box" style="border-left: 4px solid var(--primary);">
+                <h3>Broadcast Announcement</h3>
+                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">As a leadership member, you can publish announcements visible to all members and the system admin.</p>
+                <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
+                    <input type="text" name="title" placeholder="Announcement Title" required>
+                    <textarea name="content" rows="3" placeholder="Announcement Content" required></textarea>
+                    <input type="file" name="file">
+                    <button type="submit">Publish Announcement</button>
+                </form>
+            </div>
+            {% endif %}
+
+            <div class="section-box">
+                <h3>Make Contribution</h3>
+                <form action="{{ url_for('contribute') }}" method="POST">
                     <label>Account Type:</label>
-                    <select name="account_type">
+                    <select name="account_type" required>
                         <option value="Weekly Contribution">Weekly Contribution (Min: {{ min_amount }} KES)</option>
                         <option value="Personal Savings">Personal Savings</option>
                         <option value="Loan Repayment">Loan Repayment</option>
+                        <option value="Collateral Damage">Collateral Damage</option>
                     </select>
-                </div>
-                <div class="form-group">
+                    <label>Payment Method:</label>
+                    <select name="payment_method">
+                        <option value="Mpesa">Mpesa</option>
+                        <option value="Bank">Bank</option>
+                        <option value="Cash">Cash</option>
+                    </select>
                     <label>Amount (KES):</label>
-                    <input type="number" step="0.01" name="amount" required>
-                </div>
-                <button type="submit">Submit Contribution</button>
-            </form>
+                    <input type="number" step="0.01" name="amount" placeholder="Enter amount" required>
+                    <button type="submit">Submit Contribution</button>
+                </form>
+            </div>
 
-            <form action="{{ url_for('request_loan') }}" method="POST">
-                <h3>Request a Loan</h3>
-                <div class="form-group">
+            <div class="section-box">
+                <h3>Request Loan</h3>
+                <form action="{{ url_for('request_loan') }}" method="POST">
                     <label>Loan Amount (KES):</label>
-                    <input type="number" step="0.01" name="amount" required>
-                </div>
-                <button type="submit">Submit Loan Request</button>
-            </form>
-        </div>
+                    <input type="number" step="0.01" name="amount" placeholder="Enter loan amount" required>
+                    <button type="submit">Submit Loan Request</button>
+                </form>
+            </div>
 
-        <div class="section-box">
-            <h3>Announcements</h3>
-            {% if announcements %}
+            <div class="section-box">
+                <h3>My Loan Statements</h3>
+                <table>
+                    <tr><th>Date Submitted</th><th>Borrowed Amount</th><th>Paid So Far</th><th>Remaining Balance</th><th>Status</th></tr>
+                    {% for loan in loans %}
+                    <tr>
+                        <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ loan.amount }} KES</td>
+                        <td>{{ loan.paid_so_far }} KES</td>
+                        <td>{{ loan.remaining_balance }} KES</td>
+                        <td>{{ loan.status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align:center; color: #64748b;">No loan statements available.</td></tr>
+                    {% endfor %}
+                </table>
+            </div>
+
+            <div class="section-box">
+                <h3>Contribution History</h3>
+                <table>
+                    <tr><th>Date</th><th>Type</th><th>Method</th><th>Amount</th><th>Status</th></tr>
+                    {% for c in contributions %}
+                    <tr>
+                        <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ c.account_type }}</td>
+                        <td>{{ c.payment_method }}</td>
+                        <td>{{ c.amount }} KES</td>
+                        <td>{{ c.status }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align:center; color: #64748b;">No contributions found.</td></tr>
+                    {% endfor %}
+                </table>
+            </div>
+
+            <div class="section-box">
+                <h3>Announcements</h3>
                 {% for a in announcements %}
-                    <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px;">
-                        <h4 style="margin: 0 0 5px 0; color: #1e3a8a;">{{ a.title }}</h4>
+                    <div style="border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px;">
+                        <h4 style="margin: 0 0 5px 0; color: var(--primary);">{{ a.title }}</h4>
                         <p style="margin: 0 0 5px 0;">{{ a.content }}</p>
-                        {% if a.file_path %}<a href="{{ url_for('static', filename=a.file_path) }}" target="_blank" style="font-size: 0.9rem; color: #2563eb;">Download Attachment</a>{% endif %}
+                        <small style="color: #64748b;">Posted on: {{ a.date_posted.strftime('%Y-%m-%d %H:%M') }}</small>
                     </div>
+                {% else %}
+                    <p style="color: #64748b; margin: 0;">No announcements yet.</p>
                 {% endfor %}
-            {% else %}
-                <p style="color: #64748b; margin: 0;">No announcements available.</p>
-            {% endif %}
+            </div>
         </div>
     </div>
 </body>

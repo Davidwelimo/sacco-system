@@ -42,6 +42,36 @@
           {% endif %}
         {% endwith %}
 
+        <!-- Manage System Users Section -->
+        <div class="section-box">
+            <h3>Manage System Users</h3>
+            <table>
+                <tr><th>Username</th><th>Email</th><th>Role</th><th>Action</th></tr>
+                {% for member in members %}
+                <tr>
+                    <td>{{ member.username }}</td>
+                    <td>{{ member.email }}</td>
+                    <td>{{ member.role }}</td>
+                   <td>
+    {% if member.username != 'admin' %}
+    <form action="{{ url_for('admin_generate_otp', user_id=member.id) }}" method="POST" style="display:inline;">
+        <button type="submit" style="background-color: #d97706; padding: 0.25rem 0.5rem; font-size: 0.85rem;">Send OTP</button>
+    </form>
+    <form action="{{ url_for('delete_user', user_id=member.id) }}" method="POST" style="display:inline; margin-left: 4px;" onsubmit="return confirm('Are you sure you want to remove this user?');">
+        <button type="submit" class="btn-delete" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Remove</button>
+    </form>
+    {% else %}
+    <span style="color: #64748b; font-size: 0.85rem;">Protected</span>
+    {% endif %}
+</td>
+                    
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align:center;">No users found.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
         <div class="section-box">
             <h3>Manage Contributions</h3>
             <table>
@@ -60,6 +90,32 @@
                         <form action="{{ url_for('delete_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-delete">Delete</button></form>
                     </td>
                 </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="section-box">
+            <h3>Manage Member Loans</h3>
+            <table>
+                <tr><th>Member</th><th>Date Submitted</th><th>Amount</th><th>Paid So Far</th><th>Remaining Balance</th><th>Status</th><th>Actions</th></tr>
+                {% for loan in all_loans %}
+                <tr>
+                    <td>{{ loan.user.username }}</td>
+                    <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ loan.amount }} KES</td>
+                    <td>{{ loan.paid_so_far }} KES</td>
+                    <td>{{ loan.remaining_balance }} KES</td>
+                    <td>{{ loan.status }}</td>
+                    <td>
+                        {% if loan.status == 'Pending' %}
+                        <form action="{{ url_for('approve_loan', loan_id=loan.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-approve">Approve</button></form>
+                        <form action="{{ url_for('reject_loan', loan_id=loan.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-reject">Reject</button></form>
+                        {% endif %}
+                        <form action="{{ url_for('delete_loan', loan_id=loan.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this loan?');"><button type="submit" class="btn-delete">Delete</button></form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="text-align:center;">No loan requests found.</td></tr>
                 {% endfor %}
             </table>
         </div>
