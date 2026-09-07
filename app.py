@@ -1,8 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
 import os
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import random
@@ -25,10 +23,6 @@ if db_url and "sslmode" not in db_url and "sqlite" not in db_url:
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_pre_ping': True,
-    'pool_recycle': 300,
-}
 
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -110,22 +104,17 @@ def get_all_admin_loans():
     loans_list.sort(key=lambda x: x['date_submitted'], reverse=True)
     return loans_list
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            flash('Please log in to access this page.')
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
+with app.app_context():
+    db.create_all()
 
 @app.route('/')
 def index():
     return redirect(url_for('login'))
 
 @app.route('/select_role', methods=['GET', 'POST'])
-@login_required
 def select_role():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     if request.method == 'POST':
         return redirect(url_for('dashboard'))
@@ -165,11 +154,11 @@ def register():
             db.session.add(user)
             db.session.commit()
             session['user_id'] = user.id
-            flash('Registration successful. Please select your role.')
+            flash('Registration successful.')
             return redirect(url_for('select_role'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            flash('An error occurred during registration. Username or email may already be taken.')
+            flash('An error occurred during registration.')
             return redirect(url_for('register'))
     return render_template('register.html')
 
@@ -185,21 +174,21 @@ def reset_password_otp():
             user.reset_otp = None
             user.reset_otp_requested = False
             db.session.commit()
-            flash('Password has been successfully reset! Please log in.')
+            flash('Password successfully reset!')
             return redirect(url_for('login'))
         flash('Invalid username or OTP.')
     return render_template('reset_otp.html')
 
 @app.route('/logout')
-@login_required
 def logout():
     session.pop('user_id', None)
     flash('Logged out successfully.')
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
-@login_required
 def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     if not user:
         return redirect(url_for('login'))
@@ -215,8 +204,9 @@ def dashboard():
     return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, feedbacks=feedbacks, members=members, announcements=announcements, min_amount=min_amount, is_late_status=late_status)
 
 @app.route('/contribute', methods=['POST'])
-@login_required
 def contribute():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     payment_method = request.form.get('payment_method', 'Mpesa')
     account_type = request.form.get('account_type', 'Weekly Contribution')
@@ -227,53 +217,28 @@ def contribute():
         return redirect(url_for('dashboard'))
 
     late_status = is_contribution_late()
-    minimum_required = 120.0 if late_status else 100.0
+    limit = 120.0 if late_status else 100.0
 
     if account_type == 'Weekly Contribution':
-        if late_status:
-            if amount < 120.0:
-                flash('Deadline passed. Late weekly contribution must be at least 120 KES.')
-                return redirect(url_for('dashboard'))
-        else:
-            if amount < 100.0:
-                flash('Weekly contribution must be at least 100 KES.')
-                return redirect(url_for('dashboard'))
-
-        if late_status and amount >= 120.0:
-            excess = amount - 120.0
-            if excess > 0:
-                db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Weekly Contribution', amount=120.0, status='Pending'))
-                db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Collateral Damage', amount=excess, status='Pending'))
-                db.session.commit()
-                flash('Late contribution processed: 120 KES to Weekly, (excess) KES to Collateral Damage.')
-                return redirect(url_for('dashboard'))
-            else:
-                db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Weekly Contribution', amount=amount, status='Pending'))
-                db.session.commit()
-                flash('Late contribution submitted successfully.')
-                return redirect(url_for('dashboard'))
-        else:
-            excess = amount - 100.0
-            if excess > 0:
-                db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Weekly Contribution', amount=100.0, status='Pending'))
-                db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Collateral Damage', amount=excess, status='Pending'))
-                db.session.commit()
-                flash('Contribution processed: 100 KES to Weekly, (excess) KES to Collateral Damage.')
-                return redirect(url_for('dashboard'))
-            else:
-                db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Weekly Contribution', amount=amount, status='Pending'))
-                db.session.commit()
-                flash('Contribution submitted successfully.')
-                return redirect(url_for('dashboard'))
+        if amount < limit:
+            flash(f'Weekly contribution must be at least {limit} KES.')
+            return redirect(url_for('dashboard'))
+        excess = amount - limit
+        db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Weekly Contribution', amount=limit, status='Pending'))
+        if excess > 0:
+            db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Collateral Damage', amount=excess, status='Pending'))
+        db.session.commit()
+        flash('Contribution submitted successfully.')
     else:
         db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type=account_type, amount=amount, status='Pending'))
         db.session.commit()
-        flash(f'Contribution of {amount} KES towards [{account_type}] submitted.')
-        return redirect(url_for('dashboard'))
+        flash('Contribution submitted.')
+    return redirect(url_for('dashboard'))
 
 @app.route('/request_loan', methods=['POST'])
-@login_required
 def request_loan():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     try:
         amount = float(request.form.get('amount'))
@@ -289,8 +254,9 @@ def request_loan():
     return redirect(url_for('dashboard'))
 
 @app.route('/submit_feedback', methods=['POST'])
-@login_required
 def submit_feedback():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     message = request.form.get('message')
     if message:
@@ -300,60 +266,56 @@ def submit_feedback():
     return redirect(url_for('dashboard'))
 
 @app.route('/delete_feedback/<int:feedback_id>', methods=['POST'])
-@login_required
 def delete_feedback(feedback_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     feedback = Feedback.query.get_or_404(feedback_id)
     user = User.query.get(session['user_id'])
     if feedback.user_id == user.id:
         feedback.deleted_by_member = True
-    elif user.role == 'System Admin':
+    elif user.role in LEADERSHIP_ROLES:
         feedback.deleted_by_admin = True
     db.session.commit()
-    return redirect(url_for('admin') if user.role == 'System Admin' else url_for('dashboard'))
+    return redirect(url_for('admin') if user.role in LEADERSHIP_ROLES else url_for('dashboard'))
 
 @app.route('/update_settings', methods=['POST'])
-@login_required
 def update_settings():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
     file = request.files.get('profile_pic')
-    if file and file.filename != '':
-        if allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            user.profile_pic = f"uploads/{filename}"
+    if file and file.filename != '' and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        user.profile_pic = f"uploads/{filename}"
     db.session.commit()
-    flash('Profile updated successfully!')
+    flash('Profile updated!')
     return redirect(url_for('dashboard'))
 
 @app.route('/publish_announcement', methods=['POST'])
-@login_required
 def publish_announcement():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
-    
     title = request.form.get('title')
     content = request.form.get('content')
     file = request.files.get('file')
     file_url = None
-
-    if file and file.filename != '':
-        if allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            os.makedirs('static/uploads', exist_ok=True)
-            file.save(os.path.join('static/uploads', filename))
-            file_url = f"uploads/{filename}"
-
-    new_post = Announcement(title=title, content=content, file_path=file_url, publisher_id=admin_user.id)
-    db.session.add(new_post)
+    if file and file.filename != '' and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join('static/uploads', filename))
+        file_url = f"uploads/{filename}"
+    db.session.add(Announcement(title=title, content=content, file_path=file_url, publisher_id=admin_user.id))
     db.session.commit()
-    flash('Announcement published successfully to all members!')
+    flash('Announcement published!')
     return redirect(url_for('admin'))
 
 @app.route('/approve_contrib/<int:contrib_id>', methods=['POST'])
-@login_required
 def approve_contrib(contrib_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
@@ -361,12 +323,13 @@ def approve_contrib(contrib_id):
     contrib.status = 'Approved'
     db.session.commit()
     update_user_balances(contrib.user_id)
-    flash('Contribution approved')
+    flash('Contribution approved.')
     return redirect(url_for('admin'))
 
 @app.route('/reject_contrib/<int:contrib_id>', methods=['POST'])
-@login_required
 def reject_contrib(contrib_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
@@ -374,12 +337,13 @@ def reject_contrib(contrib_id):
     contrib.status = 'Declined'
     db.session.commit()
     update_user_balances(contrib.user_id)
-    flash('Contribution declined')
+    flash('Contribution declined.')
     return redirect(url_for('admin'))
 
 @app.route('/delete_contrib/<int:contrib_id>', methods=['POST'])
-@login_required
 def delete_contrib(contrib_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
@@ -388,60 +352,65 @@ def delete_contrib(contrib_id):
     db.session.delete(contrib)
     db.session.commit()
     update_user_balances(uid)
-    flash('Contribution deleted')
+    flash('Contribution deleted.')
     return redirect(url_for('admin'))
 
 @app.route('/approve_loan/<int:loan_id>', methods=['POST'])
-@login_required
 def approve_loan(loan_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
     loan = Loan.query.get_or_404(loan_id)
     loan.status = 'Approved'
     db.session.commit()
-    flash('Loan approved')
+    flash('Loan approved.')
     return redirect(url_for('admin'))
 
 @app.route('/reject_loan/<int:loan_id>', methods=['POST'])
-@login_required
 def reject_loan(loan_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
     loan = Loan.query.get_or_404(loan_id)
     loan.status = 'Declined'
     db.session.commit()
-    flash('Loan has been declined.')
+    flash('Loan declined.')
     return redirect(url_for('admin'))
 
 @app.route('/delete_loan/<int:loan_id>', methods=['POST'])
-@login_required
 def delete_loan(loan_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
     loan = Loan.query.get_or_404(loan_id)
     db.session.delete(loan)
     db.session.commit()
-    flash('Loan deleted')
+    flash('Loan deleted.')
     return redirect(url_for('admin'))
 
 @app.route('/admin_reply_feedback/<int:feedback_id>', methods=['POST'])
-@login_required
 def admin_reply_feedback(feedback_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
     feedback = Feedback.query.get_or_404(feedback_id)
     feedback.admin_reply = request.form.get('admin_reply')
     db.session.commit()
-    flash('Reply saved successfully.')
+    flash('Reply saved.')
     return redirect(url_for('admin'))
 
 @app.route('/issue_otp/<int:user_id>', methods=['POST'])
-@login_required
 def issue_otp(user_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
@@ -450,24 +419,26 @@ def issue_otp(user_id):
     target_user.reset_otp = target_otp
     target_user.reset_otp_requested = True
     db.session.commit()
-    flash(f'OTP for {target_user.username} is: {target_otp}')
+    flash(f'OTP for {target_user.username}: {target_otp}')
     return redirect(url_for('admin'))
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
-@login_required
 def delete_user(user_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))
     target_user = User.query.get_or_404(user_id)
     db.session.delete(target_user)
     db.session.commit()
-    flash('User deleted successfully.')
+    flash('User deleted.')
     return redirect(url_for('admin'))
 
 @app.route('/admin')
-@login_required
 def admin():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
         return redirect(url_for('dashboard'))

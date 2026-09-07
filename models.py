@@ -1,47 +1,59 @@
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
 from datetime import datetime
 
 db = SQLAlchemy()
 
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
+class User(db.Model):
+    __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)
-    profile_pic = db.Column(db.String(255), default='default.png')
-    otp = db.Column(db.String(6), nullable=True)
-    emergency_balance = db.Column(db.Float, default=0.0)
-
-    contributions = db.relationship('Contribution', backref='user', lazy=True, cascade="all, delete-orphan")
-    loans = db.relationship('Loan', backref='user', lazy=True, cascade="all, delete-orphan")
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    phone_number = db.Column(db.String(20), nullable=True)
+    password = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(50), default='Member')
+    profile_pic = db.Column(db.String(200), default='uploads/default.png')
+    
+    weekly_balance = db.Column(db.Float, default=0.0)
+    savings_balance = db.Column(db.Float, default=0.0)
+    loan_repayment_balance = db.Column(db.Float, default=0.0)
+    collateral_balance = db.Column(db.Float, default=0.0)
+    
+    reset_otp = db.Column(db.String(10), nullable=True)
+    reset_otp_requested = db.Column(db.Boolean, default=False)
 
 class Contribution(db.Model):
-    __tablename__ = 'contributions'
+    __tablename__ = 'contribution'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    type = db.Column(db.String(20), nullable=False)  # 'weekly' or 'monthly'
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    payment_method = db.Column(db.String(50), nullable=False)
+    account_type = db.Column(db.String(50), nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    overpayment = db.Column(db.Float, default=0.0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='Pending')
+    date_made = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Loan(db.Model):
-    __tablename__ = 'loans'
+    __tablename__ = 'loan'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='Pending')  # 'Pending', 'Approved', 'Declined'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='Pending')
+    date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
 
-class EmergencyTransfer(db.Model):
-    __tablename__ = 'emergency_transfers'
+class Feedback(db.Model):
+    __tablename__ = 'feedback'
     id = db.Column(db.Integer, primary_key=True)
-    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='Pending')  # 'Pending', 'Approved', 'Declined'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    admin_reply = db.Column(db.Text, nullable=True)
+    deleted_by_member = db.Column(db.Boolean, default=False)
+    deleted_by_admin = db.Column(db.Boolean, default=False)
+    date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
 
-    sender = db.relationship('User', foreign_keys=[sender_id])
-    receiver = db.relationship('User', foreign_keys=[receiver_id])
+class Announcement(db.Model):
+    __tablename__ = 'announcement'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(150), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    file_path = db.Column(db.String(255), nullable=True)
+    publisher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date_posted = db.Column(db.DateTime, default=datetime.utcnow)

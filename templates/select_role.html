@@ -2,31 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Select Role - SACCO System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Select Role</title>
 </head>
 <body>
-    <div class="container">
-        <h2>Select Your Role</h2>
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <ul class="flashes">
-              {% for message in messages %}
-                <li>{{ message }}</li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        {% endwith %}
-        <form method="POST">
-            <label for="role">Choose your role:</label>
-            <select name="role" id="role" required>
-                <option value="Member">Member</option>
-                <option value="Chairman and Finance">Chairman and Finance</option>
-                <option value="ICT Director">ICT Director</option>
-                <option value="HR and Secretary Manager">HR and Secretary Manager</option>
-            </select>
-            <button type="submit">Proceed to Dashboard</button>
-        </form>
-    </div>
+    <h2>Welcome, {{ user.username }}</h2>
+    <p>Your assigned role is: <strong>{{ user.role }}</strong></p>
+    <form method="POST">
+        <button type="submit">Proceed to Dashboard</button>
+    </form>
+    {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
+        <p><a href="{{ url_for('admin') }}">Go to Admin Panel</a></p>
+    {% endif %}
+    <p><a href="{{ url_for('logout') }}">Logout</a></p>
 </body>
 </html>
