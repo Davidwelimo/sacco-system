@@ -54,6 +54,29 @@
         
         input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem; font-family: inherit; font-size: 0.9rem; }
         label { display: block; margin-bottom: 0.4rem; font-weight: 500; font-size: 0.9rem; color: #334155; }
+    
+    @media (max-width: 768px) {
+  /* Stack the layout container vertically on phones */
+  .app-container, .row, body > div {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  
+  /* Make the sidebar span full width at the top */
+  .sidebar, nav {
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+  }
+  
+  /* Make the main content take up the full screen width */
+  .main-content, .col-md-9, .col-md-10 {
+    width: 100% !important;
+    padding: 10px !important;
+  }
+}
+
     </style>
 </head>
 <body>

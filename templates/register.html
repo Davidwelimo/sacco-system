@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - SACCO</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
@@ -15,6 +16,29 @@
         button:hover { background-color: #1d4ed8; }
         .links { margin-top: 1rem; text-align: center; font-size: 0.9rem; }
         .links a { color: #2563eb; text-decoration: none; }
+
+@media (max-width: 768px) {
+  /* Stack the layout container vertically on phones */
+  .app-container, .row, body > div {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  
+  /* Make the sidebar span full width at the top */
+  .sidebar, nav {
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+  }
+  
+  /* Make the main content take up the full screen width */
+  .main-content, .col-md-9, .col-md-10 {
+    width: 100% !important;
+    padding: 10px !important;
+  }
+}
+
     </style>
 </head>
 <body>
