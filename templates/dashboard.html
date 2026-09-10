@@ -16,6 +16,7 @@
             --sidebar-bg: #1e293b;
             --sidebar-hover: #334155;
         }
+        * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
         
         /* Sidebar Styles */
@@ -34,7 +35,7 @@
         header div a { color: var(--primary); text-decoration: none; margin-left: 15px; font-weight: 600; font-size: 0.9rem; }
         header div a:hover { text-decoration: underline; }
 
-        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; width: 100%; box-sizing: border-box; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; width: 100%; }
         .alert { background: #dbeafe; border-left: 4px solid var(--primary); padding: 10px 15px; margin-bottom: 1.5rem; border-radius: 4px; color: #1e40af; }
         
         .balances-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
@@ -45,40 +46,48 @@
         .section-box { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         h3 { color: var(--primary); margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; white-space: nowrap; }
         th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
         th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
         
         button { padding: 0.75rem 1.25rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: white; background-color: var(--primary); transition: background 0.2s; }
         button:hover { background-color: #1d4ed8; }
         
-        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem; font-family: inherit; font-size: 0.9rem; }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 1rem; font-family: inherit; font-size: 0.9rem; }
         label { display: block; margin-bottom: 0.4rem; font-weight: 500; font-size: 0.9rem; color: #334155; }
     
-    @media (max-width: 768px) {
-  /* Stack the layout container vertically on phones */
-  .app-container, .row, body > div {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-  }
-  
-  /* Make the sidebar span full width at the top */
-  .sidebar, nav {
-    width: 100% !important;
-    height: auto !important;
-    position: relative !important;
-    float: none !important;
-  }
-  
-  /* Make the main content take up the full screen width */
-  .main-content, .col-md-9, .col-md-10 {
-    width: 100% !important;
-    margin-left: 0 !important;
-    padding: 15px !important;
-  }
-}
-
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column !important;
+                height: auto !important;
+                overflow: auto !important;
+            }
+            .sidebar {
+                width: 100% !important;
+                height: auto !important;
+            }
+            .main-content {
+                height: auto !important;
+                overflow-y: visible !important;
+            }
+            .container {
+                padding: 0 1rem !important;
+                margin: 1rem auto !important;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 1rem;
+            }
+            header div {
+                margin-left: 0 !important;
+            }
+            .balances-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -187,38 +196,42 @@
 
             <div class="section-box">
                 <h3>My Loan Statements</h3>
-                <table>
-                    <tr><th>Date Submitted</th><th>Borrowed Amount</th><th>Paid So Far</th><th>Remaining Balance</th><th>Status</th></tr>
-                    {% for loan in loans %}
-                    <tr>
-                        <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>{{ loan.amount }} KES</td>
-                        <td>{{ loan.paid_so_far }} KES</td>
-                        <td>{{ loan.remaining_balance }} KES</td>
-                        <td>{{ loan.status }}</td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="5" style="text-align:center; color: #64748b;">No loan statements available.</td></tr>
-                    {% endfor %}
-                </table>
+                <div class="table-responsive">
+                    <table>
+                        <tr><th>Date Submitted</th><th>Borrowed Amount</th><th>Paid So Far</th><th>Remaining Balance</th><th>Status</th></tr>
+                        {% for loan in loans %}
+                        <tr>
+                            <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ loan.amount }} KES</td>
+                            <td>{{ loan.paid_so_far }} KES</td>
+                            <td>{{ loan.remaining_balance }} KES</td>
+                            <td>{{ loan.status }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align:center; color: #64748b;">No loan statements available.</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
             </div>
 
             <div class="section-box">
                 <h3>Contribution History</h3>
-                <table>
-                    <tr><th>Date</th><th>Type</th><th>Method</th><th>Amount</th><th>Status</th></tr>
-                    {% for c in contributions %}
-                    <tr>
-                        <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>{{ c.account_type }}</td>
-                        <td>{{ c.payment_method }}</td>
-                        <td>{{ c.amount }} KES</td>
-                        <td>{{ c.status }}</td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="5" style="text-align:center; color: #64748b;">No contributions found.</td></tr>
-                    {% endfor %}
-                </table>
+                <div class="table-responsive">
+                    <table>
+                        <tr><th>Date</th><th>Type</th><th>Method</th><th>Amount</th><th>Status</th></tr>
+                        {% for c in contributions %}
+                        <tr>
+                            <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ c.account_type }}</td>
+                            <td>{{ c.payment_method }}</td>
+                            <td>{{ c.amount }} KES</td>
+                            <td>{{ c.status }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align:center; color: #64748b;">No contributions found.</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
             </div>
 
             <div class="section-box">

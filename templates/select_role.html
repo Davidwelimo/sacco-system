@@ -5,38 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Select Role</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; border: 1px solid #e2e8f0; text-align: center; }
-        h2 { color: #1e3a8a; margin-top: 0; }
-        button { width: 100%; background-color: #059669; color: white; border: none; padding: 0.75rem; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 1rem; }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f8fafc; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 1rem;
+        }
+        .card { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 400px; 
+            border: 1px solid #e2e8f0; 
+            text-align: center; 
+        }
+        h2 { color: #1e3a8a; margin-top: 0; font-size: 1.5rem; }
+        button { 
+            width: 100%; 
+            background-color: #059669; 
+            color: white; 
+            border: none; 
+            padding: 0.75rem; 
+            border-radius: 4px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            margin-top: 1rem; 
+        }
         button:hover { background-color: #047857; }
         .links { margin-top: 1rem; font-size: 0.9rem; }
         .links a { color: #2563eb; text-decoration: none; margin: 0 5px; }
 
-@media (max-width: 768px) {
-  /* Stack the layout container vertically on phones */
-  .app-container, .row, body > div {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-  }
-  
-  /* Make the sidebar span full width at the top */
-  .sidebar, nav {
-    width: 100% !important;
-    height: auto !important;
-    position: relative !important;
-    float: none !important;
-  }
-  
-  /* Make the main content take up the full screen width */
-  .main-content, .col-md-9, .col-md-10 {
-    width: 100% !important;
-    margin-left: 0 !important;
-    padding: 15px !important;
-  }
-}
-
+        @media (max-width: 480px) {
+            .card { padding: 1.25rem; }
+        }
     </style>
 </head>
 <body>
