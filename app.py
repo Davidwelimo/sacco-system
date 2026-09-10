@@ -24,8 +24,6 @@ os.makedirs(os.path.join(app.root_path, 'static/uploads'), exist_ok=True)
 db.init_app(app)
 
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'txt'}
-
-# Updated LEADERSHIP_ROLES definition including System Admin and your specified roles
 LEADERSHIP_ROLES = ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager']
 
 def allowed_file(filename):
@@ -485,8 +483,7 @@ def delete_loan(loan_id):
     flash('Loan request deleted successfully.')
     return redirect(url_for('admin'))
 
-# Updated update_role route integrated using your exact snippet layout
-@app.route('/update_role/<int:user_id>', methods=['POST'])
+@app.route('/admin/update_role/<int:user_id>', methods=['POST'])
 def update_role(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -494,21 +491,21 @@ def update_role(user_id):
     if not admin_user or admin_user.role != 'System Admin':
         flash('Only System Admin can update user roles.')
         return redirect(url_for('admin'))
-        
-    # Ensure only authorized admin can do this
-    new_role = request.form.get('role')
-    user = User.query.get_or_404(user_id)
     
-    if user.username == 'admin':
+    new_role = request.form.get('role')
+    target_user = User.query.get_or_404(user_id)
+    
+    if target_user.username == 'admin':
         flash('Cannot modify the primary admin account role.', 'danger')
         return redirect(url_for('admin'))
         
-    if new_role in LEADERSHIP_ROLES or new_role == 'Member': # allow assigning member if needed
-        user.role = new_role
+    if new_role in LEADERSHIP_ROLES or new_role == 'Member':
+        target_user.role = new_role
         db.session.commit()
-        flash('Role updated successfully!')
+        flash(f"Role updated successfully for {target_user.username}.")
     else:
-        flash('Invalid role selected.')
+        flash("Invalid role selected.")
+        
     return redirect(url_for('admin'))
 
 @app.route('/switch_role', methods=['POST'])
