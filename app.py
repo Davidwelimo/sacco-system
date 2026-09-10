@@ -1,8 +1,12 @@
 import os
+import random
+from datetime import datetime, timedelta
+import smtplib
+from email.mime.text import MIMEText
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from datetime import datetime
 from models import db, User, Contribution, Loan, Feedback, Announcement
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -20,6 +24,8 @@ os.makedirs(os.path.join(app.root_path, 'static/uploads'), exist_ok=True)
 db.init_app(app)
 
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'txt'}
+
+# Updated LEADERSHIP_ROLES definition including System Admin and your specified roles
 LEADERSHIP_ROLES = ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager']
 
 def allowed_file(filename):
@@ -119,13 +125,7 @@ def login():
             return redirect(url_for('dashboard'))
             
         flash('Invalid username or password.')
- 
     return render_template('login.html')
-
-import random
-from datetime import datetime, timedelta
-import smtplib
-from email.mime.text import MIMEText
 
 @app.route('/admin/generate_otp/<int:user_id>', methods=['POST'])
 def admin_generate_otp(user_id):
@@ -140,7 +140,8 @@ def admin_generate_otp(user_id):
     target_user = User.query.get_or_404(user_id)
     
     code = str(random.randint(100000, 999999))
-    target_user.otp = code
+    target_user.reset_otp = code
+    target_user.reset_otp_requested = True
     target_user.otp_expiry = datetime.utcnow() + timedelta(minutes=15)
     db.session.commit()
     
@@ -231,6 +232,7 @@ def reset_password_otp():
         otp = request.form.get('otp')
         new_password = request.form.get('new_password')
         user = User.query.filter_by(username=username).first()
+        
         if user and user.reset_otp_requested and user.reset_otp == otp:
             user.password = generate_password_hash(new_password, method='scrypt')
             user.reset_otp = None
@@ -483,7 +485,8 @@ def delete_loan(loan_id):
     flash('Loan request deleted successfully.')
     return redirect(url_for('admin'))
 
-@app.route('/admin/update_role/<int:user_id>', methods=['POST'])
+# Updated update_role route integrated using your exact snippet layout
+@app.route('/update_role/<int:user_id>', methods=['POST'])
 def update_role(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -491,21 +494,21 @@ def update_role(user_id):
     if not admin_user or admin_user.role != 'System Admin':
         flash('Only System Admin can update user roles.')
         return redirect(url_for('admin'))
-    
+        
+    # Ensure only authorized admin can do this
     new_role = request.form.get('role')
-    target_user = User.query.get_or_404(user_id)
+    user = User.query.get_or_404(user_id)
     
-    if target_user.username == 'admin':
+    if user.username == 'admin':
         flash('Cannot modify the primary admin account role.', 'danger')
         return redirect(url_for('admin'))
         
-    if new_role in LEADERSHIP_ROLES or new_role == 'Member':
-        target_user.role = new_role
+    if new_role in LEADERSHIP_ROLES or new_role == 'Member': # allow assigning member if needed
+        user.role = new_role
         db.session.commit()
-        flash(f"Role updated successfully for {target_user.username}.")
+        flash('Role updated successfully!')
     else:
-        flash("Invalid role selected.")
-        
+        flash('Invalid role selected.')
     return redirect(url_for('admin'))
 
 @app.route('/switch_role', methods=['POST'])
