@@ -21,29 +21,25 @@
         .btn-approve { background-color: var(--success); }
         .btn-reject { background-color: #d97706; }
         .btn-delete { background-color: var(--danger); }
-        input, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem; }
+        .btn-save { background-color: var(--primary); padding: 0.25rem 0.5rem; font-size: 0.85rem; margin-left: 5px; }
+        input, textarea, select.role-select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; background-color: #fff; }
+        input, textarea { width: 100%; padding: 0.75rem; box-sizing: border-box; margin-bottom: 1rem; }
     @media (max-width: 768px) {
-  /* Stack the layout container vertically on phones */
-  .app-container, .row, body > div {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-  }
-  
-  /* Make the sidebar span full width at the top */
-  .sidebar, nav {
-    width: 100% !important;
-    height: auto !important;
-    position: relative !important;
-  }
-  
-  /* Make the main content take up the full screen width */
-  .main-content, .col-md-9, .col-md-10 {
-    width: 100% !important;
-    padding: 10px !important;
-  }
-}
-
+      .app-container, .row, body > div {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+      }
+      .sidebar, nav {
+        width: 100% !important;
+        height: auto !important;
+        position: relative !important;
+      }
+      .main-content, .col-md-9, .col-md-10 {
+        width: 100% !important;
+        padding: 10px !important;
+      }
+    }
     </style>
 </head>
 <body>
@@ -73,20 +69,33 @@
                 <tr>
                     <td>{{ member.username }}</td>
                     <td>{{ member.email }}</td>
-                    <td>{{ member.role }}</td>
-                   <td>
-    {% if member.username != 'admin' %}
-    <form action="{{ url_for('admin_generate_otp', user_id=member.id) }}" method="POST" style="display:inline;">
-        <button type="submit" style="background-color: #d97706; padding: 0.25rem 0.5rem; font-size: 0.85rem;">Send OTP</button>
-    </form>
-    <form action="{{ url_for('delete_user', user_id=member.id) }}" method="POST" style="display:inline; margin-left: 4px;" onsubmit="return confirm('Are you sure you want to remove this user?');">
-        <button type="submit" class="btn-delete" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Remove</button>
-    </form>
-    {% else %}
-    <span style="color: #64748b; font-size: 0.85rem;">Protected</span>
-    {% endif %}
-</td>
-                    
+                    <td>
+                        {% if member.username != 'admin' %}
+                        <form action="{{ url_for('update_role', user_id=member.id) }}" method="POST" style="display:inline;">
+                            <select name="role" class="role-select">
+                                <option value="Member" {% if member.role == 'Member' %}selected{% endif %}>Member</option>
+                                <option value="ICT DIRECTOR" {% if member.role == 'ICT DIRECTOR' %}selected{% endif %}>ICT DIRECTOR</option>
+                                <option value="HR MANAGER" {% if member.role == 'HR MANAGER' %}selected{% endif %}>HR MANAGER</option>
+                                <option value="System Admin" {% if member.role == 'System Admin' %}selected{% endif %}>System Admin</option>
+                            </select>
+                            <button type="submit" class="btn-save">Save</button>
+                        </form>
+                        {% else %}
+                        <span>{{ member.role }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if member.username != 'admin' %}
+                        <form action="{{ url_for('admin_generate_otp', user_id=member.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" style="background-color: #d97706; padding: 0.25rem 0.5rem; font-size: 0.85rem;">Send OTP</button>
+                        </form>
+                        <form action="{{ url_for('delete_user', user_id=member.id) }}" method="POST" style="display:inline; margin-left: 4px;" onsubmit="return confirm('Are you sure you want to remove this user?');">
+                            <button type="submit" class="btn-delete" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Remove</button>
+                        </form>
+                        {% else %}
+                        <span style="color: #64748b; font-size: 0.85rem;">Protected</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% else %}
                 <tr><td colspan="4" style="text-align:center;">No users found.</td></tr>
