@@ -1,12 +1,8 @@
 import os
-import random
-from datetime import datetime, timedelta
-import smtplib
-from email.mime.text import MIMEText
-
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from datetime import datetime
 from models import db, User, Contribution, Loan, Feedback, Announcement
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -123,7 +119,13 @@ def login():
             return redirect(url_for('dashboard'))
             
         flash('Invalid username or password.')
+ 
     return render_template('login.html')
+
+import random
+from datetime import datetime, timedelta
+import smtplib
+from email.mime.text import MIMEText
 
 @app.route('/admin/generate_otp/<int:user_id>', methods=['POST'])
 def admin_generate_otp(user_id):
@@ -131,18 +133,20 @@ def admin_generate_otp(user_id):
         return redirect(url_for('login'))
     current_user = User.query.get(session['user_id'])
     
+    # Restrict to Admin only
     if not current_user or current_user.username != 'admin':
         flash('Only Admin can generate password reset OTPs.')
         return redirect(url_for('admin'))
         
     target_user = User.query.get_or_404(user_id)
     
+    # Generate 6-digit OTP valid for 15 minutes
     code = str(random.randint(100000, 999999))
-    target_user.reset_otp = code
-    target_user.reset_otp_requested = True
+    target_user.otp = code
     target_user.otp_expiry = datetime.utcnow() + timedelta(minutes=15)
     db.session.commit()
     
+    # Send email via SMTP (Configure with your email service provider details)
     try:
         sender_email = "welimodavid781@gmail.com"
         sender_password = "ghdtalvrietsjobb"
@@ -158,6 +162,7 @@ def admin_generate_otp(user_id):
             
         flash(f"OTP successfully generated and emailed to {target_user.email}.")
     except Exception as e:
+        # Fallback display if mail server configuration is pending
         flash(f"OTP generated for {target_user.username}: {code} (Email dispatch failed: {str(e)})")
         
     return redirect(url_for('admin'))
@@ -168,6 +173,7 @@ def delete_user(user_id):
         return redirect(url_for('login'))
     current_user = User.query.get(session['user_id'])
     
+    # Strictly restrict deletion to the 'admin' account only
     if not current_user or current_user.username != 'admin':
         flash('Only Admin can remove users from the system.')
         return redirect(url_for('admin'))
@@ -178,6 +184,7 @@ def delete_user(user_id):
         flash('You cannot remove your own active account.')
         return redirect(url_for('admin'))
 
+    # Clean up associated user records to prevent database errors
     Contribution.query.filter_by(user_id=target_user.id).delete()
     Loan.query.filter_by(user_id=target_user.id).delete()
     Feedback.query.filter_by(user_id=target_user.id).delete()
@@ -194,7 +201,7 @@ def register():
         email = request.form.get('email')
         phone_number = request.form.get('phone_number')
         password = request.form.get('password')
-        role = request.form.get('role')
+        role = request.form.get('role')  # <--- Captures the selected role dynamically
 
         if User.query.filter_by(username=username).first():
             flash('Username already exists.')
@@ -230,7 +237,6 @@ def reset_password_otp():
         otp = request.form.get('otp')
         new_password = request.form.get('new_password')
         user = User.query.filter_by(username=username).first()
-        
         if user and user.reset_otp_requested and user.reset_otp == otp:
             user.password = generate_password_hash(new_password, method='scrypt')
             user.reset_otp = None
@@ -252,9 +258,11 @@ def dashboard():
     if user.role in LEADERSHIP_ROLES:
         return redirect(url_for('admin'))
 
+    # Handle announcement submission from the dashboard if allowed
     if request.method == 'POST':
         content = request.form.get('content')
         if content:
+            # Allow Admin, HR MANAGER, FINANCE CHAIRMAN, ICT DIRECTOR to broadcast
             if user.role in ['Admin', 'HR MANAGER', 'FINANCE CHAIRMAN', 'ICT DIRECTOR'] or user.username == 'admin':
                 announcement = Announcement(content=content, user_id=user.id)
                 db.session.add(announcement)
@@ -273,7 +281,6 @@ def dashboard():
     announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
     
     return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, feedbacks=feedbacks, announcements=announcements, min_amount=min_amount, is_late_status=late_status)
-
 @app.route('/contribute', methods=['POST'])
 def contribute():
     if 'user_id' not in session:
@@ -483,8 +490,8 @@ def delete_loan(loan_id):
     flash('Loan request deleted successfully.')
     return redirect(url_for('admin'))
 
-@app.route('/admin/update_role/<int:user_id>', methods=['POST'])
-def update_role(user_id):
+@app.route('/admin/update_role', methods=['POST'])
+def update_role():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
@@ -492,20 +499,13 @@ def update_role(user_id):
         flash('Only System Admin can update user roles.')
         return redirect(url_for('admin'))
     
+    target_user_id = request.form.get('user_id')
     new_role = request.form.get('role')
-    target_user = User.query.get_or_404(user_id)
-    
-    if target_user.username == 'admin':
-        flash('Cannot modify the primary admin account role.', 'danger')
-        return redirect(url_for('admin'))
-        
+    target_user = User.query.get_or_404(target_user_id)
     if new_role in LEADERSHIP_ROLES or new_role == 'Member':
         target_user.role = new_role
         db.session.commit()
         flash(f"Role updated successfully for {target_user.username}.")
-    else:
-        flash("Invalid role selected.")
-        
     return redirect(url_for('admin'))
 
 @app.route('/switch_role', methods=['POST'])
