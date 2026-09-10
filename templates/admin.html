@@ -101,9 +101,9 @@
                             {% if member.username != 'admin' %}
                             <form action="{{ url_for('update_role', user_id=member.id) }}" method="POST" style="display:inline;">
                                 <select name="role" class="role-select">
-                                    <option value="ICT manager" {% if member.role == 'ICT manager' %}selected{% endif %}>ICT manager</option>
-                                    <option value="Chairman and Finance" {% if member.role == 'Chairman and Finance' %}selected{% endif %}>Chairman and Finance</option>
-                                     <option value="HR /Secretary manager" {% if member.role == 'HR /Secretary manager' %}selected{% endif %}>HR /Secretary manager</option>
+                                    <option value="ICT manager" {% if member.role in ['ICT manager', 'ICT Manager'] %}selected{% endif %}>ICT manager</option>
+                                    <option value="Chairman and Finance" {% if member.role in ['Chairman and Finance', 'Finance Chairman', 'Chairman & Finance'] %}selected{% endif %}>Chairman and Finance</option>
+                                    <option value="HR /Secretary manager" {% if member.role in ['HR /Secretary manager', 'HR Manager', 'Secretary Manager', 'HR / Secretary Manager'] %}selected{% endif %}>HR /Secretary manager</option>
                                 </select>
                                 <button type="submit" class="btn-save">Save</button>
                             </form>
