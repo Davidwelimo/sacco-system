@@ -100,7 +100,7 @@
             </div>
             <ul class="sidebar-menu">
                 <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
-                {% if user.role in ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager'] %}
+                {% if user.username == 'admin' %}
                 <li><a href="{{ url_for('admin') }}">Admin Panel</a></li>
                 {% endif %}
             </ul>
@@ -115,7 +115,7 @@
         <header>
             <h2>Welcome, {{ user.username }} ({{ user.role }})</h2>
             <div>
-                {% if user.role in ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager'] %}
+                {% if user.username == 'admin' %}
                 <a href="{{ url_for('admin') }}">Admin Panel</a>
                 {% endif %}
                 <a href="{{ url_for('logout') }}" style="color: var(--danger);">Logout</a>

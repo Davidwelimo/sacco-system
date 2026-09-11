@@ -549,7 +549,10 @@ def admin():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+    
+    # Restrict access strictly to the primary 'admin' account
+    if not admin_user or admin_user.username != 'admin':
+        flash('Unauthorized access. Please log in with the admin account.')
         return redirect(url_for('dashboard'))
     
     all_contribs = Contribution.query.order_by(Contribution.date_made.desc()).all()
