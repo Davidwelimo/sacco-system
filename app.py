@@ -249,7 +249,8 @@ def dashboard():
     if not user:
         return redirect(url_for('login'))
     
-    if user.role in LEADERSHIP_ROLES:
+    # ONLY send the primary admin account automatically to the admin panel
+    if user.username == 'admin':
         return redirect(url_for('admin'))
 
     if request.method == 'POST':
@@ -279,7 +280,7 @@ def contribute():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
-    if user.role in LEADERSHIP_ROLES:
+    if user.username == 'admin':
         return redirect(url_for('admin'))
         
     payment_method = request.form.get('payment_method', 'Mpesa')
@@ -311,7 +312,7 @@ def request_loan():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
-    if user.role in LEADERSHIP_ROLES:
+    if user.username == 'admin':
         return redirect(url_for('admin'))
         
     try:
@@ -332,7 +333,7 @@ def submit_feedback():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
-    if user.role in LEADERSHIP_ROLES:
+    if user.username == 'admin':
         return redirect(url_for('admin'))
         
     message = request.form.get('message')
@@ -483,14 +484,13 @@ def delete_loan(loan_id):
     flash('Loan request deleted successfully.')
     return redirect(url_for('admin'))
 
-@app.route('/admin/update_role/<int:user_id>', methods=['POST'])
+@app.route('/update_role/<int:user_id>', methods=['POST'])
 def update_role(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role != 'System Admin':
-        flash('Only System Admin can update user roles.')
-        return redirect(url_for('admin'))
+    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+        return redirect(url_for('dashboard'))
     
     new_role = request.form.get('role')
     target_user = User.query.get_or_404(user_id)
