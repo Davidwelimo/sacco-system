@@ -286,8 +286,12 @@ def update_profile_pic():
     
     file = request.files.get('profile_pic')
     if file and file.filename != '' and allowed_file(file.filename):
+        upload_dir = os.path.join(app.root_path, 'static/uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        
         filename = secure_filename(f"user_{user.id}_{file.filename}")
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        file.save(os.path.join(upload_dir, filename))
+        
         user.profile_pic = f"uploads/{filename}"
         db.session.commit()
         flash('Profile picture successfully updated!')
@@ -379,8 +383,10 @@ def publish_announcement():
     file = request.files.get('file')
     file_url = None
     if file and file.filename != '' and allowed_file(file.filename):
+        upload_dir = os.path.join(app.root_path, 'static/uploads')
+        os.makedirs(upload_dir, exist_ok=True)
         filename = secure_filename(file.filename)
-        file.save(os.path.join('static/uploads', filename))
+        file.save(os.path.join(upload_dir, filename))
         file_url = f"uploads/{filename}"
     db.session.add(Announcement(title=title, content=content, file_path=file_url, publisher_id=publisher_user.id))
     db.session.commit()
