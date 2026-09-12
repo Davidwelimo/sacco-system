@@ -21,7 +21,6 @@ db.init_app(app)
 
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'txt'}
 
-# Synchronized with admin.html role options
 LEADERSHIP_ROLES = [
     'System Admin', 
     'Chairman', 
@@ -263,13 +262,10 @@ def dashboard():
     if request.method == 'POST':
         content = request.form.get('content')
         if content:
-            if user.role in LEADERSHIP_ROLES or user.username == 'admin':
-                announcement = Announcement(content=content, user_id=user.id)
-                db.session.add(announcement)
-                db.session.commit()
-                flash('Announcement broadcasted successfully.')
-            else:
-                flash('You do not have permission to post announcements.')
+            announcement = Announcement(content=content, user_id=user.id)
+            db.session.add(announcement)
+            db.session.commit()
+            flash('Announcement broadcasted successfully.')
         return redirect(url_for('dashboard'))
 
     late_status = is_contribution_late()
@@ -355,7 +351,7 @@ def publish_announcement():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     publisher_user = User.query.get(session['user_id'])
-    if not publisher_user or publisher_user.role not in LEADERSHIP_ROLES:
+    if not publisher_user:
         return redirect(url_for('dashboard'))
     
     title = request.form.get('title')
@@ -369,7 +365,10 @@ def publish_announcement():
     db.session.add(Announcement(title=title, content=content, file_path=file_url, publisher_id=publisher_user.id))
     db.session.commit()
     flash('Announcement broadcasted successfully across all accounts!')
-    return redirect(url_for('admin'))
+    
+    if publisher_user.username == 'admin':
+        return redirect(url_for('admin'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/approve_contrib/<int:contrib_id>', methods=['POST'])
 def approve_contrib(contrib_id):
