@@ -294,7 +294,7 @@ def update_profile_pic():
     else:
         flash('Please select a valid image file.')
         
-    if user.username == 'admin' or user.role in LEADERSHIP_ROLES:
+    if user.username == 'admin':
         return redirect(url_for('admin'))
     return redirect(url_for('dashboard'))
 
@@ -395,7 +395,7 @@ def approve_contrib(contrib_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+    if not admin_user or admin_user.username != 'admin':
         return redirect(url_for('dashboard'))
     
     contrib = Contribution.query.get_or_404(contrib_id)
@@ -442,7 +442,7 @@ def reject_contrib(contrib_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+    if not admin_user or admin_user.username != 'admin':
         return redirect(url_for('dashboard'))
     
     contrib = Contribution.query.get_or_404(contrib_id)
@@ -457,7 +457,7 @@ def delete_contrib(contrib_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+    if not admin_user or admin_user.username != 'admin':
         return redirect(url_for('dashboard'))
     
     contrib = Contribution.query.get_or_404(contrib_id)
@@ -473,7 +473,7 @@ def approve_loan(loan_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+    if not admin_user or admin_user.username != 'admin':
         return redirect(url_for('dashboard'))
     
     loan = Loan.query.get_or_404(loan_id)
@@ -487,7 +487,7 @@ def reject_loan(loan_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+    if not admin_user or admin_user.username != 'admin':
         return redirect(url_for('dashboard'))
     
     loan = Loan.query.get_or_404(loan_id)
@@ -501,7 +501,7 @@ def delete_loan(loan_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+    if not admin_user or admin_user.username != 'admin':
         return redirect(url_for('dashboard'))
     
     loan = Loan.query.get_or_404(loan_id)
@@ -515,7 +515,7 @@ def update_role(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role not in LEADERSHIP_ROLES:
+    if not admin_user or admin_user.username != 'admin':
         return redirect(url_for('dashboard'))
     
     new_role = request.form.get('role')
@@ -557,7 +557,7 @@ def admin_set_user_otp(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
-    if not admin_user or admin_user.role != 'System Admin':
+    if not admin_user or admin_user.username != 'admin':
         flash('Only System Admin can perform this action.')
         return redirect(url_for('admin'))
     
@@ -586,7 +586,16 @@ def admin():
     members = User.query.all()
     announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
     
-    return render_template('admin.html', admin_user=admin_user, all_contribs=all_contribs, all_loans=all_loans, feedbacks=feedbacks, members=members, announcements=announcements)
+    return render_template(
+        'admin.html', 
+        user=admin_user, 
+        admin_user=admin_user, 
+        all_contribs=all_contribs, 
+        all_loans=all_loans, 
+        feedbacks=feedbacks, 
+        members=members, 
+        announcements=announcements
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
