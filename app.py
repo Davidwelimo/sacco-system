@@ -20,7 +20,15 @@ os.makedirs(os.path.join(app.root_path, 'static/uploads'), exist_ok=True)
 db.init_app(app)
 
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'txt'}
-LEADERSHIP_ROLES = ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager']
+
+# Synchronized with admin.html role options
+LEADERSHIP_ROLES = [
+    'System Admin', 
+    'Chairman', 
+    'Finance', 
+    'HR & Secretary Manager', 
+    'ICT Director'
+]
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -249,14 +257,13 @@ def dashboard():
     if not user:
         return redirect(url_for('login'))
     
-    # ONLY send the primary admin account automatically to the admin panel
     if user.username == 'admin':
         return redirect(url_for('admin'))
 
     if request.method == 'POST':
         content = request.form.get('content')
         if content:
-            if user.role in ['Admin', 'HR MANAGER', 'FINANCE CHAIRMAN', 'ICT DIRECTOR'] or user.username == 'admin':
+            if user.role in LEADERSHIP_ROLES or user.username == 'admin':
                 announcement = Announcement(content=content, user_id=user.id)
                 db.session.add(announcement)
                 db.session.commit()
@@ -550,7 +557,6 @@ def admin():
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     
-    # Restrict access strictly to the primary 'admin' account
     if not admin_user or admin_user.username != 'admin':
         flash('Unauthorized access. Please log in with the admin account.')
         return redirect(url_for('dashboard'))

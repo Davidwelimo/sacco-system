@@ -100,7 +100,7 @@
             </div>
             <ul class="sidebar-menu">
                 <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
-                {% if user.username == 'admin' %}
+                {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
                 <li><a href="{{ url_for('admin') }}">Admin Panel</a></li>
                 {% endif %}
             </ul>
@@ -115,7 +115,7 @@
         <header>
             <h2>Welcome, {{ user.username }} ({{ user.role }})</h2>
             <div>
-                {% if user.username == 'admin' %}
+                {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
                 <a href="{{ url_for('admin') }}">Admin Panel</a>
                 {% endif %}
                 <a href="{{ url_for('logout') }}" style="color: var(--danger);">Logout</a>
@@ -150,13 +150,15 @@
                 </div>
             </div>
 
-            {% if user.role in ['System Admin', 'ICT manager', 'Chairman and Finance', 'HR /Secretary manager'] %}
+            <!-- FIXED: Synchronized with LEADERSHIP_ROLES backend list -->
+            {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
             <div class="section-box" style="border-left: 4px solid var(--primary);">
                 <h3>Broadcast Announcement</h3>
-                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">As a leadership member, you can publish announcements visible to all members and the system admin.</p>
+                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">As a leadership member, you can publish announcements visible to all members and attach files.</p>
                 <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
                     <input type="text" name="title" placeholder="Announcement Title" required>
                     <textarea name="content" rows="3" placeholder="Announcement Content" required></textarea>
+                    <label style="font-size: 0.85rem; color: #64748b;">Attach Document (PDF, Word, Image):</label>
                     <input type="file" name="file">
                     <button type="submit">Publish Announcement</button>
                 </form>
@@ -237,9 +239,12 @@
             <div class="section-box">
                 <h3>Announcements</h3>
                 {% for a in announcements %}
-                    <div style="border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px;">
+                    <div style="border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px;">
                         <h4 style="margin: 0 0 5px 0; color: var(--primary);">{{ a.title }}</h4>
-                        <p style="margin: 0 0 5px 0;">{{ a.content }}</p>
+                        <p style="margin: 0 0 8px 0;">{{ a.content }}</p>
+                        {% if a.file_path %}
+                            <p style="margin: 0 0 8px 0;"><a href="{{ url_for('static', filename=a.file_path) }}" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline;">📄 View Attached Document</a></p>
+                        {% endif %}
                         <small style="color: #64748b;">Posted on: {{ a.date_posted.strftime('%Y-%m-%d %H:%M') }}</small>
                     </div>
                 {% else %}

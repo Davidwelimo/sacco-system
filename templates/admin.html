@@ -101,9 +101,11 @@
                             {% if member.username != 'admin' %}
                             <form action="{{ url_for('update_role', user_id=member.id) }}" method="POST" style="display:inline;">
                                 <select name="role" class="role-select">
-                                    <option value="ICT manager" {% if member.role in ['ICT manager', 'ICT Manager'] %}selected{% endif %}>ICT manager</option>
-                                    <option value="Chairman and Finance" {% if member.role in ['Chairman and Finance', 'Finance Chairman', 'Chairman & Finance'] %}selected{% endif %}>Chairman and Finance</option>
-                                    <option value="HR /Secretary manager" {% if member.role in ['HR /Secretary manager', 'HR Manager', 'Secretary Manager', 'HR / Secretary Manager'] %}selected{% endif %}>HR /Secretary manager</option>
+                                    <option value="System Admin" {% if member.role == 'System Admin' %}selected{% endif %}>System Admin</option>
+                                    <option value="Chairman" {% if member.role == 'Chairman' %}selected{% endif %}>Chairman</option>
+                                    <option value="Finance" {% if member.role == 'Finance' %}selected{% endif %}>Finance</option>
+                                    <option value="HR & Secretary Manager" {% if member.role == 'HR & Secretary Manager' %}selected{% endif %}>HR & Secretary Manager</option>
+                                    <option value="ICT Director" {% if member.role == 'ICT Director' %}selected{% endif %}>ICT Director</option>
                                 </select>
                                 <button type="submit" class="btn-save">Save</button>
                             </form>
@@ -185,9 +187,11 @@
 
         <div class="section-box">
             <h3>Publish Announcement</h3>
+            <!-- Added enctype="multipart/form-data" to ensure document/PDF uploads succeed -->
             <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
                 <input type="text" name="title" placeholder="Announcement Title" required>
                 <textarea name="content" rows="3" placeholder="Announcement Content" required></textarea>
+                <label style="font-size: 0.85rem; color: #64748b; display: block; margin-bottom: 5px;">Attach Document (PDF, Word, or Image):</label>
                 <input type="file" name="file">
                 <button type="submit" style="background-color: var(--primary);">Publish Announcement</button>
             </form>
