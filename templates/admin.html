@@ -5,31 +5,90 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - SACCO</title>
     <style>
-        :root { --primary: #1e3a8a; --success: #059669; --danger: #dc2626; --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --border: #e2e8f0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
-        header { background-color: var(--primary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        header a { color: #93c5fd; text-decoration: none; margin-left: 15px; font-weight: 500; }
-        header a:hover { color: white; }
-        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        :root { 
+            --primary: #1e3a8a; 
+            --success: #059669; 
+            --danger: #dc2626; 
+            --bg: #f8fafc; 
+            --card-bg: #ffffff; 
+            --text: #1e293b; 
+            --border: #e2e8f0;
+            --sidebar-bg: #1e293b;
+            --sidebar-hover: #334155;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Styles */
+        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
+        .sidebar-brand { padding: 1.5rem; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; }
+        .sidebar-menu li a { display: block; padding: 1rem 1.5rem; color: #cbd5e1; text-decoration: none; transition: 0.2s; font-size: 0.95rem; }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active { background-color: var(--sidebar-hover); color: white; border-left: 4px solid #3b82f6; }
+        .sidebar-footer { padding: 1.5rem; border-top: 1px solid #334155; }
+        .sidebar-footer a { color: #f87171; text-decoration: none; font-weight: 500; }
+
+        /* Profile Widget in Sidebar */
+        .sidebar-profile { padding: 1.25rem 1.5rem; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+        .sidebar-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; background-color: #334155; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 1.1rem; }
+        .sidebar-user-info h4 { margin: 0; font-size: 0.9rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+        .sidebar-user-info span { font-size: 0.75rem; color: #94a3b8; }
+        .avatar-upload-btn { font-size: 0.75rem; color: #38bdf8; text-decoration: none; margin-top: 2px; display: inline-block; }
+        .avatar-upload-btn:hover { text-decoration: underline; }
+
+        /* Main Content Wrapper */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        header { background-color: white; color: var(--text); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        header h2 { margin: 0; font-size: 1.3rem; color: var(--primary); }
+        header div a { color: var(--primary); text-decoration: none; margin-left: 15px; font-weight: 600; font-size: 0.9rem; }
+        header div a:hover { text-decoration: underline; }
+
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; width: 100%; }
         .alert { background: #dbeafe; border-left: 4px solid var(--primary); padding: 10px 15px; margin-bottom: 1.5rem; border-radius: 4px; color: #1e40af; }
-        .section-box { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        h3 { color: var(--primary); margin-top: 0; }
+        
+        .section-box { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        h3 { color: var(--primary); margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
         
         /* Table Responsive Wrapper */
         .table-responsive { width: 100%; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; white-space: nowrap; }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
-        th { background-color: #f1f5f9; color: #334155; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
         
-        button { padding: 0.4rem 0.8rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: white; }
+        button { padding: 0.4rem 0.8rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: white; transition: background 0.2s; }
         .btn-approve { background-color: var(--success); }
+        .btn-approve:hover { background-color: #047857; }
         .btn-reject { background-color: #d97706; }
+        .btn-reject:hover { background-color: #b45309; }
         .btn-delete { background-color: var(--danger); }
+        .btn-delete:hover { background-color: #b91c1c; }
         .btn-save { background-color: var(--primary); padding: 0.25rem 0.5rem; font-size: 0.85rem; margin-left: 5px; }
-        input, textarea, select.role-select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; background-color: #fff; }
+        .btn-save:hover { background-color: #1d4ed8; }
+
+        input, textarea, select.role-select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; background-color: #fff; font-family: inherit; }
         input, textarea { width: 100%; padding: 0.75rem; box-sizing: border-box; margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.4rem; font-weight: 500; font-size: 0.9rem; color: #334155; }
+
+        /* Modal Styles for Profile Picture Upload */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .close-modal { float: right; font-size: 1.5rem; font-weight: bold; cursor: pointer; color: #64748b; }
+        .close-modal:hover { color: var(--text); }
         
         @media (max-width: 768px) {
+            body {
+                flex-direction: column !important;
+                height: auto !important;
+                overflow: auto !important;
+            }
+            .sidebar {
+                width: 100% !important;
+                height: auto !important;
+            }
+            .main-content {
+                height: auto !important;
+                overflow-y: visible !important;
+            }
             header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -44,158 +103,207 @@
                 margin-right: 15px;
             }
             .container {
-                padding: 0 0.5rem;
-                margin: 1rem auto;
+                padding: 0 1rem !important;
+                margin: 1rem auto !important;
             }
             .section-box {
                 padding: 1rem;
-            }
-            .app-container, .row, body > div {
-                display: flex !important;
-                flex-direction: column !important;
-                width: 100% !important;
-            }
-            .sidebar, nav {
-                width: 100% !important;
-                height: auto !important;
-                position: relative !important;
-                float: none !important;
-            }
-            .main-content, .col-md-9, .col-md-10 {
-                width: 100% !important;
-                margin-left: 0 !important;
-                padding: 15px !important;
             }
         }
     </style>
 </head>
 <body>
-    <header>
-        <h2>Leadership Admin Panel</h2>
+    <!-- Left Dark Sidebar -->
+    <div class="sidebar">
         <div>
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <div class="sidebar-brand">
+                <span>🏛️ SACCO Portal</span>
+            </div>
+            
+            <!-- User Profile Widget in Sidebar -->
+            <div class="sidebar-profile">
+                {% if user.profile_pic %}
+                    <img src="{{ url_for('static', filename=user.profile_pic) }}" alt="Avatar" class="sidebar-avatar">
+                {% else %}
+                    <div class="sidebar-avatar">{{ user.username[0]|upper }}</div>
+                {% endif %}
+                <div class="sidebar-user-info">
+                    <h4>{{ user.username }}</h4>
+                    <span>{{ user.role }}</span>
+                    <div>
+                        <a href="#" onclick="openProfileModal(); return false;" class="avatar-upload-btn">Change Photo</a>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
+                <li><a href="{{ url_for('admin') }}" class="active">Admin Panel</a></li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="sidebar-footer">
             <a href="{{ url_for('logout') }}">Logout</a>
         </div>
-    </header>
+    </div>
 
-    <div class="container">
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            <div class="alert">
-                {% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <header>
+            <h2>Leadership Admin Panel</h2>
+            <div>
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('logout') }}" style="color: var(--danger);">Logout</a>
             </div>
-          {% endif %}
-        {% endwith %}
+        </header>
 
-        <!-- Manage System Users Section -->
-        <div class="section-box">
-            <h3>Manage System Users</h3>
-            <div class="table-responsive">
-                <table>
-                    <tr><th>Username</th><th>Email</th><th>Role</th><th>Action</th></tr>
-                    {% for member in members %}
-                    <tr>
-                        <td>{{ member.username }}</td>
-                        <td>{{ member.email }}</td>
-                        <td>
-                            {% if member.username != 'admin' %}
-                            <form action="{{ url_for('update_role', user_id=member.id) }}" method="POST" style="display:inline;">
-                                <select name="role" class="role-select">
-                                    <option value="System Admin" {% if member.role == 'System Admin' %}selected{% endif %}>System Admin</option>
-                                    <option value="Chairman" {% if member.role == 'Chairman' %}selected{% endif %}>Chairman</option>
-                                    <option value="Finance" {% if member.role == 'Finance' %}selected{% endif %}>Finance</option>
-                                    <option value="HR & Secretary Manager" {% if member.role == 'HR & Secretary Manager' %}selected{% endif %}>HR & Secretary Manager</option>
-                                    <option value="ICT Director" {% if member.role == 'ICT Director' %}selected{% endif %}>ICT Director</option>
-                                </select>
-                                <button type="submit" class="btn-save">Save</button>
-                            </form>
-                            {% else %}
-                            <span>{{ member.role }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if member.username != 'admin' %}
-                            <form action="{{ url_for('admin_generate_otp', user_id=member.id) }}" method="POST" style="display:inline;">
-                                <button type="submit" style="background-color: #d97706; padding: 0.25rem 0.5rem; font-size: 0.85rem;">Send OTP</button>
-                            </form>
-                            <form action="{{ url_for('delete_user', user_id=member.id) }}" method="POST" style="display:inline; margin-left: 4px;" onsubmit="return confirm('Are you sure you want to remove this user?');">
-                                <button type="submit" class="btn-delete" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Remove</button>
-                            </form>
-                            {% else %}
-                            <span style="color: #64748b; font-size: 0.85rem;">Protected</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="4" style="text-align:center;">No users found.</td></tr>
-                    {% endfor %}
-                </table>
+        <div class="container">
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="alert">
+                    {% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <!-- Manage System Users Section -->
+            <div class="section-box">
+                <h3>Manage System Users</h3>
+                <div class="table-responsive">
+                    <table>
+                        <tr><th>Username</th><th>Email</th><th>Role</th><th>Action</th></tr>
+                        {% for member in members %}
+                        <tr>
+                            <td>{{ member.username }}</td>
+                            <td>{{ member.email }}</td>
+                            <td>
+                                {% if member.username != 'admin' %}
+                                <form action="{{ url_for('update_role', user_id=member.id) }}" method="POST" style="display:inline;">
+                                    <select name="role" class="role-select">
+                                        <option value="System Admin" {% if member.role == 'System Admin' %}selected{% endif %}>System Admin</option>
+                                        <option value="Chairman" {% if member.role == 'Chairman' %}selected{% endif %}>Chairman</option>
+                                        <option value="Finance" {% if member.role == 'Finance' %}selected{% endif %}>Finance</option>
+                                        <option value="HR & Secretary Manager" {% if member.role == 'HR & Secretary Manager' %}selected{% endif %}>HR & Secretary Manager</option>
+                                        <option value="ICT Director" {% if member.role == 'ICT Director' %}selected{% endif %}>ICT Director</option>
+                                    </select>
+                                    <button type="submit" class="btn-save">Save</button>
+                                </form>
+                                {% else %}
+                                <span>{{ member.role }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if member.username != 'admin' %}
+                                <form action="{{ url_for('admin_generate_otp', user_id=member.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" style="background-color: #d97706; padding: 0.25rem 0.5rem; font-size: 0.85rem;">Send OTP</button>
+                                </form>
+                                <form action="{{ url_for('delete_user', user_id=member.id) }}" method="POST" style="display:inline; margin-left: 4px;" onsubmit="return confirm('Are you sure you want to remove this user?');">
+                                    <button type="submit" class="btn-delete" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Remove</button>
+                                </form>
+                                {% else %}
+                                <span style="color: #64748b; font-size: 0.85rem;">Protected</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="text-align:center;">No users found.</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <h3>Manage Contributions</h3>
+                <div class="table-responsive">
+                    <table>
+                        <tr><th>ID</th><th>Type</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+                        {% for c in all_contribs %}
+                        <tr>
+                            <td>{{ c.id }}</td>
+                            <td>{{ c.account_type }}</td>
+                            <td>{{ c.amount }} KES</td>
+                            <td>{{ c.status }}</td>
+                            <td>
+                                {% if c.status == 'Pending' %}
+                                <form action="{{ url_for('approve_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-approve">Approve</button></form>
+                                <form action="{{ url_for('reject_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-reject">Reject</button></form>
+                                {% endif %}
+                                <form action="{{ url_for('delete_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-delete">Delete</button></form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <h3>Manage Member Loans</h3>
+                <div class="table-responsive">
+                    <table>
+                        <tr><th>Member</th><th>Date Submitted</th><th>Amount</th><th>Paid So Far</th><th>Remaining Balance</th><th>Status</th><th>Actions</th></tr>
+                        {% for loan in all_loans %}
+                        <tr>
+                            <td>{{ loan.user.username }}</td>
+                            <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ loan.amount }} KES</td>
+                            <td>{{ loan.paid_so_far }} KES</td>
+                            <td>{{ loan.remaining_balance }} KES</td>
+                            <td>{{ loan.status }}</td>
+                            <td>
+                                {% if loan.status == 'Pending' %}
+                                <form action="{{ url_for('approve_loan', loan_id=loan.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-approve">Approve</button></form>
+                                <form action="{{ url_for('reject_loan', loan_id=loan.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-reject">Reject</button></form>
+                                {% endif %}
+                                <form action="{{ url_for('delete_loan', loan_id=loan.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this loan?');"><button type="submit" class="btn-delete">Delete</button></form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" style="text-align:center;">No loan requests found.</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <h3>Publish Announcement</h3>
+                <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
+                    <input type="text" name="title" placeholder="Announcement Title" required>
+                    <textarea name="content" rows="3" placeholder="Announcement Content" required></textarea>
+                    <label style="font-size: 0.85rem; color: #64748b; display: block; margin-bottom: 5px;">Attach Document (PDF, Word, or Image):</label>
+                    <input type="file" name="file">
+                    <button type="submit" style="background-color: var(--primary);">Publish Announcement</button>
+                </form>
             </div>
         </div>
+    </div>
 
-        <div class="section-box">
-            <h3>Manage Contributions</h3>
-            <div class="table-responsive">
-                <table>
-                    <tr><th>ID</th><th>Type</th><th>Amount</th><th>Status</th><th>Action</th></tr>
-                    {% for c in all_contribs %}
-                    <tr>
-                        <td>{{ c.id }}</td>
-                        <td>{{ c.account_type }}</td>
-                        <td>{{ c.amount }} KES</td>
-                        <td>{{ c.status }}</td>
-                        <td>
-                            {% if c.status == 'Pending' %}
-                            <form action="{{ url_for('approve_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-approve">Approve</button></form>
-                            <form action="{{ url_for('reject_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-reject">Reject</button></form>
-                            {% endif %}
-                            <form action="{{ url_for('delete_contrib', contrib_id=c.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-delete">Delete</button></form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </table>
-            </div>
-        </div>
-
-        <div class="section-box">
-            <h3>Manage Member Loans</h3>
-            <div class="table-responsive">
-                <table>
-                    <tr><th>Member</th><th>Date Submitted</th><th>Amount</th><th>Paid So Far</th><th>Remaining Balance</th><th>Status</th><th>Actions</th></tr>
-                    {% for loan in all_loans %}
-                    <tr>
-                        <td>{{ loan.user.username }}</td>
-                        <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>{{ loan.amount }} KES</td>
-                        <td>{{ loan.paid_so_far }} KES</td>
-                        <td>{{ loan.remaining_balance }} KES</td>
-                        <td>{{ loan.status }}</td>
-                        <td>
-                            {% if loan.status == 'Pending' %}
-                            <form action="{{ url_for('approve_loan', loan_id=loan.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-approve">Approve</button></form>
-                            <form action="{{ url_for('reject_loan', loan_id=loan.id) }}" method="POST" style="display:inline;"><button type="submit" class="btn-reject">Reject</button></form>
-                            {% endif %}
-                            <form action="{{ url_for('delete_loan', loan_id=loan.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this loan?');"><button type="submit" class="btn-delete">Delete</button></form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="7" style="text-align:center;">No loan requests found.</td></tr>
-                    {% endfor %}
-                </table>
-            </div>
-        </div>
-
-        <div class="section-box">
-            <h3>Publish Announcement</h3>
-            <!-- Added enctype="multipart/form-data" to ensure document/PDF uploads succeed -->
-            <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
-                <input type="text" name="title" placeholder="Announcement Title" required>
-                <textarea name="content" rows="3" placeholder="Announcement Content" required></textarea>
-                <label style="font-size: 0.85rem; color: #64748b; display: block; margin-bottom: 5px;">Attach Document (PDF, Word, or Image):</label>
-                <input type="file" name="file">
-                <button type="submit" style="background-color: var(--primary);">Publish Announcement</button>
+    <!-- Profile Picture Upload Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeProfileModal()">&times;</span>
+            <h3 style="margin-top: 0;">Update Profile Picture</h3>
+            <form action="{{ url_for('update_profile_pic') }}" method="POST" enctype="multipart/form-data">
+                <label>Select Image File:</label>
+                <input type="file" name="profile_pic" accept="image/*" required>
+                <button type="submit" style="width: 100%; margin-top: 10px; background-color: var(--primary);">Upload Picture</button>
             </form>
         </div>
     </div>
+
+    <script>
+        function openProfileModal() {
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+        function closeProfileModal() {
+            document.getElementById('profileModal').style.display = 'none';
+        }
+        window.onclick = function(event) {
+            let modal = document.getElementById('profileModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>

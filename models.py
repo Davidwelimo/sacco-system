@@ -19,6 +19,9 @@ class User(db.Model):
     
     reset_otp = db.Column(db.String(10), nullable=True)
     reset_otp_requested = db.Column(db.Boolean, default=False)
+    
+    # Profile Picture field added
+    profile_pic = db.Column(db.String(255), nullable=True, default='uploads/default_avatar.png')
 
     contributions = db.relationship('Contribution', backref='user', lazy=True)
     loans = db.relationship('Loan', backref='user', lazy=True)

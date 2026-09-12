@@ -28,6 +28,14 @@
         .sidebar-footer { padding: 1.5rem; border-top: 1px solid #334155; }
         .sidebar-footer a { color: #f87171; text-decoration: none; font-weight: 500; }
 
+        /* Profile Widget in Sidebar */
+        .sidebar-profile { padding: 1.25rem 1.5rem; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+        .sidebar-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; background-color: #334155; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 1.1rem; }
+        .sidebar-user-info h4 { margin: 0; font-size: 0.9rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+        .sidebar-user-info span { font-size: 0.75rem; color: #94a3b8; }
+        .avatar-upload-btn { font-size: 0.75rem; color: #38bdf8; text-decoration: none; margin-top: 2px; display: inline-block; }
+        .avatar-upload-btn:hover { text-decoration: underline; }
+
         /* Main Content Wrapper */
         .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
         header { background-color: white; color: var(--text); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -56,6 +64,12 @@
         
         input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 1rem; font-family: inherit; font-size: 0.9rem; }
         label { display: block; margin-bottom: 0.4rem; font-weight: 500; font-size: 0.9rem; color: #334155; }
+
+        /* Modal Styles for Profile Picture Upload */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .close-modal { float: right; font-size: 1.5rem; font-weight: bold; cursor: pointer; color: #64748b; }
+        .close-modal:hover { color: var(--text); }
     
         @media (max-width: 768px) {
             body {
@@ -98,6 +112,23 @@
             <div class="sidebar-brand">
                 <span>🏛️ SACCO Portal</span>
             </div>
+            
+            <!-- User Profile Widget in Sidebar -->
+            <div class="sidebar-profile">
+                {% if user.profile_pic %}
+                    <img src="{{ url_for('static', filename=user.profile_pic) }}" alt="Avatar" class="sidebar-avatar">
+                {% else %}
+                    <div class="sidebar-avatar">{{ user.username[0]|upper }}</div>
+                {% endif %}
+                <div class="sidebar-user-info">
+                    <h4>{{ user.username }}</h4>
+                    <span>{{ user.role }}</span>
+                    <div>
+                        <a href="#" onclick="openProfileModal(); return false;" class="avatar-upload-btn">Change Photo</a>
+                    </div>
+                </div>
+            </div>
+
             <ul class="sidebar-menu">
                 <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
                 {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
@@ -150,11 +181,10 @@
                 </div>
             </div>
 
-            <!-- FIXED: Synchronized with LEADERSHIP_ROLES backend list -->
-            {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
+            <!-- Open to all members to broadcast announcements -->
             <div class="section-box" style="border-left: 4px solid var(--primary);">
                 <h3>Broadcast Announcement</h3>
-                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">As a leadership member, you can publish announcements visible to all members and attach files.</p>
+                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">As a member, you can publish announcements visible to all system accounts and attach files.</p>
                 <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
                     <input type="text" name="title" placeholder="Announcement Title" required>
                     <textarea name="content" rows="3" placeholder="Announcement Content" required></textarea>
@@ -163,7 +193,6 @@
                     <button type="submit">Publish Announcement</button>
                 </form>
             </div>
-            {% endif %}
 
             <div class="section-box">
                 <h3>Make Contribution</h3>
@@ -253,5 +282,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Profile Picture Upload Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeProfileModal()">&times;</span>
+            <h3 style="margin-top: 0;">Update Profile Picture</h3>
+            <form action="{{ url_for('update_profile_pic') }}" method="POST" enctype="multipart/form-data">
+                <label>Select Image File:</label>
+                <input type="file" name="profile_pic" accept="image/*" required>
+                <button type="submit" style="width: 100%; margin-top: 10px;">Upload Picture</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openProfileModal() {
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+        function closeProfileModal() {
+            document.getElementById('profileModal').style.display = 'none';
+        }
+        window.onclick = function(event) {
+            let modal = document.getElementById('profileModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>

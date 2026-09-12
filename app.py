@@ -19,7 +19,7 @@ os.makedirs(os.path.join(app.root_path, 'static/uploads'), exist_ok=True)
 
 db.init_app(app)
 
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'txt'}
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'txt', 'gif'}
 
 LEADERSHIP_ROLES = [
     'System Admin', 
@@ -277,6 +277,26 @@ def dashboard():
     announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
     
     return render_template('dashboard.html', user=user, contributions=contributions, loans=loans, feedbacks=feedbacks, announcements=announcements, min_amount=min_amount, is_late_status=late_status)
+
+@app.route('/update_profile_pic', methods=['POST'])
+def update_profile_pic():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    
+    file = request.files.get('profile_pic')
+    if file and file.filename != '' and allowed_file(file.filename):
+        filename = secure_filename(f"user_{user.id}_{file.filename}")
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        user.profile_pic = f"uploads/{filename}"
+        db.session.commit()
+        flash('Profile picture successfully updated!')
+    else:
+        flash('Please select a valid image file.')
+        
+    if user.username == 'admin' or user.role in LEADERSHIP_ROLES:
+        return redirect(url_for('admin'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/contribute', methods=['POST'])
 def contribute():
