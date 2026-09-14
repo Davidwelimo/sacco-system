@@ -130,7 +130,7 @@ def login():
     return render_template('login.html')
 
 import random
-from datetime import datetime, timedelta
+from datetime import timedelta
 import smtplib
 from email.mime.text import MIMEText
 
@@ -147,7 +147,8 @@ def admin_generate_otp(user_id):
     target_user = User.query.get_or_404(user_id)
     
     code = str(random.randint(100000, 999999))
-    target_user.otp = code
+    target_user.reset_otp = code
+    target_user.reset_otp_requested = True
     target_user.otp_expiry = datetime.utcnow() + timedelta(minutes=15)
     db.session.commit()
     
@@ -262,7 +263,7 @@ def dashboard():
     if request.method == 'POST':
         content = request.form.get('content')
         if content:
-            announcement = Announcement(content=content, user_id=user.id)
+            announcement = Announcement(content=content, publisher_id=user.id)
             db.session.add(announcement)
             db.session.commit()
             flash('Announcement broadcasted successfully.')
@@ -302,6 +303,34 @@ def update_profile_pic():
         return redirect(url_for('admin'))
     return redirect(url_for('dashboard'))
 
+@app.route('/top_up_wallet', methods=['POST'])
+def top_up_wallet():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    if user.username == 'admin':
+        return redirect(url_for('admin'))
+        
+    try:
+        amount = float(request.form.get('amount'))
+        if amount <= 0:
+            raise ValueError()
+    except (ValueError, TypeError):
+        flash('Invalid top-up amount.')
+        return redirect(url_for('dashboard'))
+    
+    contrib = Contribution(
+        user_id=user.id,
+        payment_method='Mpesa',
+        account_type='Wallet Top-up',
+        amount=amount,
+        status='Pending'
+    )
+    db.session.add(contrib)
+    db.session.commit()
+    flash(f'Wallet top-up request of {amount} KES submitted successfully. Waiting for admin approval.')
+    return redirect(url_for('dashboard'))
+
 @app.route('/contribute', methods=['POST'])
 def contribute():
     if 'user_id' not in session:
@@ -321,17 +350,28 @@ def contribute():
     late_status = is_contribution_late()
     limit = 100.0 if late_status else 100.0
 
-    if account_type == 'Weekly Contribution':
-        if amount < limit:
-            flash(f'Weekly contribution must be at least {limit} KES.')
+    if account_type == 'Weekly Contribution' and amount < limit:
+        flash(f'Weekly contribution must be at least {limit} KES.')
+        return redirect(url_for('dashboard'))
+
+    if payment_method == 'Wallet':
+        if user.wallet_balance < amount:
+            flash('Insufficient funds in your Wallet. Please top up first.')
             return redirect(url_for('dashboard'))
-        db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type='Weekly Contribution', amount=amount, status='Pending'))
-        db.session.commit()
-        flash('Weekly contribution submitted successfully.')
-    else:
-        db.session.add(Contribution(user_id=user.id, payment_method=payment_method, account_type=account_type, amount=amount, status='Pending'))
-        db.session.commit()
-        flash('Contribution submitted.')
+        
+        user.wallet_balance -= amount
+
+    contrib = Contribution(
+        user_id=user.id, 
+        payment_method=payment_method, 
+        account_type=account_type, 
+        amount=amount, 
+        status='Pending'
+    )
+    db.session.add(contrib)
+    db.session.commit()
+
+    flash('Contribution submitted successfully and is pending admin approval.')
     return redirect(url_for('dashboard'))
 
 @app.route('/request_loan', methods=['POST'])
@@ -406,6 +446,19 @@ def approve_contrib(contrib_id):
     
     contrib = Contribution.query.get_or_404(contrib_id)
     
+    if contrib.status == 'Approved':
+        flash('Contribution is already approved.')
+        return redirect(url_for('admin'))
+
+    if contrib.account_type == 'Wallet Top-up':
+        contrib.status = 'Approved'
+        user = User.query.get(contrib.user_id)
+        if user:
+            user.wallet_balance += contrib.amount
+        db.session.commit()
+        flash('Wallet top-up approved successfully and credited to user wallet.')
+        return redirect(url_for('admin'))
+
     if contrib.account_type == 'Loan Repayment':
         user_id = contrib.user_id
         approved_loans = Loan.query.filter_by(user_id=user_id, status='Approved').all()
@@ -425,6 +478,10 @@ def approve_contrib(contrib_id):
                 contrib.status = 'Approved'
             else:
                 contrib.status = 'Declined'
+                if contrib.payment_method == 'Wallet':
+                    user = User.query.get(user_id)
+                    if user:
+                        user.wallet_balance += contrib.amount
                 
             if excess > 0:
                 savings_amt = excess * 0.60
@@ -452,9 +509,15 @@ def reject_contrib(contrib_id):
         return redirect(url_for('dashboard'))
     
     contrib = Contribution.query.get_or_404(contrib_id)
-    contrib.status = 'Declined'
-    db.session.commit()
-    update_user_balances(contrib.user_id)
+    if contrib.status != 'Declined':
+        contrib.status = 'Declined'
+        if contrib.payment_method == 'Wallet':
+            user = User.query.get(contrib.user_id)
+            if user:
+                user.wallet_balance += contrib.amount
+        db.session.commit()
+        update_user_balances(contrib.user_id)
+        
     flash('Contribution declined.')
     return redirect(url_for('admin'))
 
@@ -468,9 +531,17 @@ def delete_contrib(contrib_id):
     
     contrib = Contribution.query.get_or_404(contrib_id)
     uid = contrib.user_id
+    was_approved = contrib.status == 'Approved'
+    
+    if was_approved and contrib.account_type == 'Wallet Top-up':
+        user = User.query.get(uid)
+        if user:
+            user.wallet_balance -= contrib.amount
+
     db.session.delete(contrib)
     db.session.commit()
-    update_user_balances(uid)
+    if was_approved:
+        update_user_balances(uid)
     flash('Contribution deleted.')
     return redirect(url_for('admin'))
 
@@ -564,7 +635,6 @@ def admin_set_user_otp(user_id):
         return redirect(url_for('login'))
     admin_user = User.query.get(session['user_id'])
     if not admin_user or admin_user.username != 'admin':
-        flash('Only System Admin can perform this action.')
         return redirect(url_for('admin'))
     
     new_otp = request.form.get('otp')
@@ -586,11 +656,51 @@ def admin():
         flash('Unauthorized access. Please log in with the admin account.')
         return redirect(url_for('dashboard'))
     
-    all_contribs = Contribution.query.order_by(Contribution.date_made.desc()).all()
+    # Use joinedload to safely pull user relations for contributions
+    all_contribs = Contribution.query.options(db.joinedload(Contribution.user)).order_by(Contribution.date_made.desc()).all()
     all_loans = get_all_admin_loans()
     feedbacks = Feedback.query.filter_by(deleted_by_admin=False).order_by(Feedback.date_submitted.desc()).all()
     members = User.query.all()
     announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
+    
+    approved_contribs = [c for c in all_contribs if c.status == 'Approved']
+    
+    total_weekly = sum(c.amount for c in approved_contribs if c.account_type == 'Weekly Contribution')
+    total_savings = sum(c.amount for c in approved_contribs if c.account_type == 'Personal Savings')
+    total_collateral = sum(c.amount for c in approved_contribs if c.account_type == 'Collateral Damage')
+    total_repayment = sum(c.amount for c in approved_contribs if c.account_type == 'Loan Repayment')
+    
+    wallet_transfers = [c for c in all_contribs if c.account_type == 'Wallet Top-up']
+    total_wallet_topups = sum(c.amount for c in approved_contribs if c.account_type == 'Wallet Top-up')
+    
+    grand_total = total_weekly + total_savings + total_collateral + total_repayment
+
+    # Build member summaries list mapping to the 'user' object so summary.user.username & summary.user.email work
+    member_summaries = []
+    for m in members:
+        m_contribs = [c for c in approved_contribs if c.user_id == m.id]
+        w_bal = sum(c.amount for c in m_contribs if c.account_type == 'Weekly Contribution')
+        s_bal = sum(c.amount for c in m_contribs if c.account_type == 'Personal Savings')
+        c_bal = sum(c.amount for c in m_contribs if c.account_type == 'Collateral Damage')
+        r_bal = sum(c.amount for c in m_contribs if c.account_type == 'Loan Repayment')
+        tot_bal = w_bal + s_bal + c_bal + r_bal
+
+        member_summaries.append({
+            'user': m,
+            'username': m.username,
+            'email': m.email,
+            'weekly_balance': w_bal,
+            'weekly_total': w_bal,
+            'savings_balance': s_bal,
+            'savings_total': s_bal,
+            'collateral_balance': c_bal,
+            'collateral_total': c_bal,
+            'loan_repayment_balance': r_bal,
+            'loan_repayment_total': r_bal,
+            'total_balance': tot_bal,
+            'grand_total': tot_bal,
+            'account_status': 'Active'
+        })
     
     return render_template(
         'admin.html', 
@@ -600,7 +710,15 @@ def admin():
         all_loans=all_loans, 
         feedbacks=feedbacks, 
         members=members, 
-        announcements=announcements
+        announcements=announcements,
+        total_weekly=total_weekly,
+        total_savings=total_savings,
+        total_collateral=total_collateral,
+        total_repayment=total_repayment,
+        wallet_transfers=wallet_transfers,
+        total_wallet_topups=total_wallet_topups,
+        grand_total=grand_total,
+        member_summaries=member_summaries
     )
 
 if __name__ == '__main__':
