@@ -50,6 +50,8 @@
         .balance-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left; }
         .balance-card h4 { margin: 0 0 0.5rem 0; color: #64748b; font-size: 0.85rem; text-transform: uppercase; }
         .balance-card p { margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+        .balance-card.wallet-highlight { border-left: 4px solid var(--success); }
+        .balance-card.wallet-highlight p { color: var(--success); }
         
         .section-box { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         h3 { color: var(--primary); margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
@@ -163,6 +165,10 @@
             {% endwith %}
 
             <div class="balances-grid">
+                <div class="balance-card wallet-highlight">
+                    <h4>Wallet Balance</h4>
+                    <p>{{ user.wallet_balance }} KES</p>
+                </div>
                 <div class="balance-card">
                     <h4>Weekly Balance</h4>
                     <p>{{ user.weekly_balance }} KES</p>
@@ -179,6 +185,17 @@
                     <h4>Collateral Damage</h4>
                     <p>{{ user.collateral_balance }} KES</p>
                 </div>
+            </div>
+
+            <!-- Top Up Wallet Section -->
+            <div class="section-box" style="border-left: 4px solid var(--success);">
+                <h3>Top Up Wallet</h3>
+                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">Add funds to your internal wallet for quick, instant contributions.</p>
+                <form action="{{ url_for('top_up_wallet') }}" method="POST">
+                    <label>Top-Up Amount (KES):</label>
+                    <input type="number" step="0.01" name="amount" placeholder="Enter amount to top up" required>
+                    <button type="submit" style="background-color: var(--success);">Top Up Wallet</button>
+                </form>
             </div>
 
             <!-- Open to all members to broadcast announcements -->
@@ -209,6 +226,7 @@
                         <option value="Mpesa">Mpesa</option>
                         <option value="Bank">Bank</option>
                         <option value="Cash">Cash</option>
+                        <option value="Wallet">Wallet (Instant Approval)</option>
                     </select>
                     <label>Amount (KES):</label>
                     <input type="number" step="0.01" name="amount" placeholder="Enter amount" required>

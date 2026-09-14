@@ -16,6 +16,7 @@ class User(db.Model):
     savings_balance = db.Column(db.Float, default=0.0)
     loan_repayment_balance = db.Column(db.Float, default=0.0)
     collateral_balance = db.Column(db.Float, default=0.0)
+    wallet_balance = db.Column(db.Float, default=0.0) # Added Wallet Balance
     
     reset_otp = db.Column(db.String(10), nullable=True)
     reset_otp_requested = db.Column(db.Boolean, default=False)
