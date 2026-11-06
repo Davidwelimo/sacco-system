@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Dashboard - SACCO</title>
+    <style>
+        :root { 
+            --primary: #1e3a8a; 
+            --success: #059669; 
+            --danger: #dc2626; 
+            --bg: #f8fafc; 
+            --card-bg: #ffffff; 
+            --text: #1e293b; 
+            --border: #e2e8f0;
+            --sidebar-bg: #1e293b;
+            --sidebar-hover: #334155;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Styles */
+        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
+        .sidebar-brand { padding: 1.5rem; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; }
+        .sidebar-menu li a { display: block; padding: 1rem 1.5rem; color: #cbd5e1; text-decoration: none; transition: 0.2s; font-size: 0.95rem; }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active { background-color: var(--sidebar-hover); color: white; border-left: 4px solid #3b82f6; }
+        .sidebar-footer { padding: 1.5rem; border-top: 1px solid #334155; }
+        .sidebar-footer a { color: #f87171; text-decoration: none; font-weight: 500; }
+
+        /* Profile Widget in Sidebar */
+        .sidebar-profile { padding: 1.25rem 1.5rem; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+        .sidebar-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; background-color: #334155; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 1.1rem; }
+        .sidebar-user-info h4 { margin: 0; font-size: 0.9rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+        .sidebar-user-info span { font-size: 0.75rem; color: #94a3b8; }
+        .avatar-upload-btn { font-size: 0.75rem; color: #38bdf8; text-decoration: none; margin-top: 2px; display: inline-block; }
+        .avatar-upload-btn:hover { text-decoration: underline; }
+
+        /* Main Content Wrapper */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        header { background-color: white; color: var(--text); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        header h2 { margin: 0; font-size: 1.3rem; color: var(--primary); }
+        header div a { color: var(--primary); text-decoration: none; margin-left: 15px; font-weight: 600; font-size: 0.9rem; }
+        header div a:hover { text-decoration: underline; }
+
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; width: 100%; }
+        .alert { background: #dbeafe; border-left: 4px solid var(--primary); padding: 10px 15px; margin-bottom: 1.5rem; border-radius: 4px; color: #1e40af; }
+        
+        .balances-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .balance-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left; }
+        .balance-card h4 { margin: 0 0 0.5rem 0; color: #64748b; font-size: 0.85rem; text-transform: uppercase; }
+        .balance-card p { margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+        .balance-card.wallet-highlight { border-left: 4px solid var(--success); }
+        .balance-card.wallet-highlight p { color: var(--success); }
+        
+        .section-box { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        h3 { color: var(--primary); margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
+        
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; white-space: nowrap; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        th { background-color: #f1f5f9; color: #334155; font-weight: 600; }
+        
+        button { padding: 0.75rem 1.25rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: white; background-color: var(--primary); transition: background 0.2s; }
+        button:hover { background-color: #1d4ed8; }
+        
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 1rem; font-family: inherit; font-size: 0.9rem; }
+        label { display: block; margin-bottom: 0.4rem; font-weight: 500; font-size: 0.9rem; color: #334155; }
+
+        /* Modal Styles for Profile Picture Upload */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .close-modal { float: right; font-size: 1.5rem; font-weight: bold; cursor: pointer; color: #64748b; }
+        .close-modal:hover { color: var(--text); }
+    
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column !important;
+                height: auto !important;
+                overflow: auto !important;
+            }
+            .sidebar {
+                width: 100% !important;
+                height: auto !important;
+            }
+            .main-content {
+                height: auto !important;
+                overflow-y: visible !important;
+            }
+            .container {
+                padding: 0 1rem !important;
+                margin: 1rem auto !important;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 1rem;
+            }
+            header div {
+                margin-left: 0 !important;
+            }
+            .balances-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Left Dark Sidebar -->
+    <div class="sidebar">
+        <div>
+            <div class="sidebar-brand">
+                <span>🏛️ SACCO Portal</span>
+            </div>
+            
+            <!-- User Profile Widget in Sidebar -->
+            <div class="sidebar-profile">
+                {% if user.profile_pic %}
+                    <img src="{{ url_for('static', filename=user.profile_pic) }}" alt="Avatar" class="sidebar-avatar">
+                {% else %}
+                    <div class="sidebar-avatar">{{ user.username[0]|upper }}</div>
+                {% endif %}
+                <div class="sidebar-user-info">
+                    <h4>{{ user.username }}</h4>
+                    <span>{{ user.role }}</span>
+                    <div>
+                        <a href="#" onclick="openProfileModal(); return false;" class="avatar-upload-btn">Change Photo</a>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
+                <li><a href="{{ url_for('change_password') }}">Change Password</a></li>
+                {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
+                <li><a href="{{ url_for('admin') }}">Admin Panel</a></li>
+                {% endif %}
+            </ul>
+        </div>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <header>
+            <h2>Welcome, {{ user.username }} ({{ user.role }})</h2>
+            <div>
+                <a href="{{ url_for('change_password') }}">Change Password</a>
+                {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
+                <a href="{{ url_for('admin') }}">Admin Panel</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" style="color: var(--danger);">Logout</a>
+            </div>
+        </header>
+
+        <div class="container">
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="alert">
+                    {% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <div class="balances-grid">
+                <div class="balance-card wallet-highlight">
+                    <h4>Wallet Balance</h4>
+                    <p>{{ user.wallet_balance }} KES</p>
+                </div>
+                <div class="balance-card">
+                    <h4>Weekly Balance</h4>
+                    <p>{{ user.weekly_balance }} KES</p>
+                </div>
+                <div class="balance-card">
+                    <h4>Personal Savings</h4>
+                    <p>{{ user.savings_balance }} KES</p>
+                </div>
+                <div class="balance-card">
+                    <h4>Loan Repayment</h4>
+                    <p>{{ user.loan_repayment_balance }} KES</p>
+                </div>
+                <div class="balance-card">
+                    <h4>Collateral Damage</h4>
+                    <p>{{ user.collateral_balance }} KES</p>
+                </div>
+            </div>
+
+            <!-- Account Security Section -->
+            <div class="section-box" style="border-left: 4px solid #3b82f6;">
+                <h3>Account Security</h3>
+                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">Update your password regularly to keep your account safe.</p>
+                <a href="{{ url_for('change_password') }}" style="display: inline-block;"><button type="button">Change Password</button></a>
+            </div>
+
+            <!-- Top Up Wallet Section -->
+            <div class="section-box" style="border-left: 4px solid var(--success);">
+                <h3>Top Up Wallet</h3>
+                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">Add funds to your internal wallet for quick, instant contributions.</p>
+                <form action="{{ url_for('top_up_wallet') }}" method="POST">
+                    <label>Top-Up Amount (KES):</label>
+                    <input type="number" step="0.01" name="amount" placeholder="Enter amount to top up" required>
+                    <button type="submit" style="background-color: var(--success);">Top Up Wallet</button>
+                </form>
+            </div>
+
+            <!-- Open to all members to broadcast announcements -->
+            <div class="section-box" style="border-left: 4px solid var(--primary);">
+                <h3>Broadcast Announcement</h3>
+                <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">As a member, you can publish announcements visible to all system accounts and attach files.</p>
+                <form action="{{ url_for('publish_announcement') }}" method="POST" enctype="multipart/form-data">
+                    <input type="text" name="title" placeholder="Announcement Title" required>
+                    <textarea name="content" rows="3" placeholder="Announcement Content" required></textarea>
+                    <label style="font-size: 0.85rem; color: #64748b;">Attach Document (PDF, Word, Image):</label>
+                    <input type="file" name="file">
+                    <button type="submit">Publish Announcement</button>
+                </form>
+            </div>
+
+            <div class="section-box">
+                <h3>Make Contribution</h3>
+                <form action="{{ url_for('contribute') }}" method="POST">
+                    <label>Account Type:</label>
+                    <select name="account_type" required>
+                        <option value="Weekly Contribution">Weekly Contribution (Min: {{ min_amount }} KES)</option>
+                        <option value="Personal Savings">Personal Savings</option>
+                        <option value="Loan Repayment">Loan Repayment</option>
+                        <option value="Collateral Damage">Collateral Damage</option>
+                    </select>
+                    <label>Payment Method:</label>
+                    <select name="payment_method">
+                        <option value="Mpesa">Mpesa</option>
+                        <option value="Bank">Bank</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Wallet">Wallet (Instant Approval)</option>
+                    </select>
+                    <label>Amount (KES):</label>
+                    <input type="number" step="0.01" name="amount" placeholder="Enter amount" required>
+                    <button type="submit">Submit Contribution</button>
+                </form>
+            </div>
+
+            <div class="section-box">
+                <h3>Request Loan</h3>
+                <form action="{{ url_for('request_loan') }}" method="POST">
+                    <label>Loan Amount (KES):</label>
+                    <input type="number" step="0.01" name="amount" placeholder="Enter loan amount" required>
+                    <button type="submit">Submit Loan Request</button>
+                </form>
+            </div>
+
+            <div class="section-box">
+                <h3>My Loan Statements</h3>
+                <div class="table-responsive">
+                    <table>
+                        <tr><th>Date Submitted</th><th>Borrowed Amount</th><th>Paid So Far</th><th>Remaining Balance</th><th>Status</th></tr>
+                        {% for loan in loans %}
+                        <tr>
+                            <td>{{ loan.date_submitted.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ loan.amount }} KES</td>
+                            <td>{{ loan.paid_so_far }} KES</td>
+                            <td>{{ loan.remaining_balance }} KES</td>
+                            <td>{{ loan.status }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align:center; color: #64748b;">No loan statements available.</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <h3>Contribution History</h3>
+                <div class="table-responsive">
+                    <table>
+                        <tr><th>Date</th><th>Type</th><th>Method</th><th>Amount</th><th>Status</th></tr>
+                        {% for c in contributions %}
+                        <tr>
+                            <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ c.account_type }}</td>
+                            <td>{{ c.payment_method }}</td>
+                            <td>{{ c.amount }} KES</td>
+                            <td>{{ c.status }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align:center; color: #64748b;">No contributions found.</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <h3>Announcements</h3>
+                {% for a in announcements %}
+                    <div style="border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px;">
+                        <h4 style="margin: 0 0 5px 0; color: var(--primary);">{{ a.title }}</h4>
+                        <p style="margin: 0 0 8px 0;">{{ a.content }}</p>
+                        {% if a.file_path %}
+                            <p style="margin: 0 0 8px 0;"><a href="{{ url_for('static', filename=a.file_path) }}" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline;">📄 View Attached Document</a></p>
+                        {% endif %}
+                        <small style="color: #64748b;">Posted on: {{ a.date_posted.strftime('%Y-%m-%d %H:%M') }}</small>
+                    </div>
+                {% else %}
+                    <p style="color: #64748b; margin: 0;">No announcements yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Picture Upload Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeProfileModal()">&times;</span>
+            <h3 style="margin-top: 0;">Update Profile Picture</h3>
+            <form action="{{ url_for('update_profile_pic') }}" method="POST" enctype="multipart/form-data">
+                <label>Select Image File:</label>
+                <input type="file" name="profile_pic" accept="image/*" required>
+                <button type="submit" style="width: 100%; margin-top: 10px;">Upload Picture</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openProfileModal() {
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+        function closeProfileModal() {
+            document.getElementById('profileModal').style.display = 'none';
+        }
+        window.onclick = function(event) {
+            let modal = document.getElementById('profileModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

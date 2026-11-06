@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - SACCO</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f8fafc; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 1rem;
+        }
+        .card { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 400px; 
+            border: 1px solid #e2e8f0; 
+        }
+        h2 { color: #1e3a8a; margin-top: 0; }
+        .alert { background: #dbeafe; color: #1e40af; padding: 10px; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #334155; }
+        input, select { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; }
+        button { width: 100%; background-color: #1e3a8a; color: white; border: none; padding: 0.75rem; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 1rem; }
+        button:hover { background-color: #1d4ed8; }
+        .links { margin-top: 1rem; text-align: center; font-size: 0.9rem; }
+        .links a { color: #2563eb; text-decoration: none; }
+
+        @media (max-width: 480px) {
+            .card { padding: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Register Account</h2>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert">{% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}</div>
+          {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="text" name="phone_number">
+            </div>
+            <div class="form-group">
+                <label>Select Role</label>
+                <select name="role" required>
+                    <option value="HR MANAGER">HR MANAGER</option>
+                    <option value="FINANCE CHAIRMAN">FINANCE CHAIRMAN</option>
+                    <option value="ICT DIRECTOR">ICT DIRECTOR</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit">Register</button>
+        </form>
+        <div class="links">
+            <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
+        </div>
+    </div>
+</body>
+</html>
