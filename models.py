@@ -16,12 +16,12 @@ class User(db.Model):
     savings_balance = db.Column(db.Float, default=0.0)
     loan_repayment_balance = db.Column(db.Float, default=0.0)
     collateral_balance = db.Column(db.Float, default=0.0)
-    wallet_balance = db.Column(db.Float, default=0.0) # Added Wallet Balance
+    wallet_balance = db.Column(db.Float, default=0.0)
     
     reset_otp = db.Column(db.String(10), nullable=True)
     reset_otp_requested = db.Column(db.Boolean, default=False)
+    otp_expiry = db.Column(db.DateTime, nullable=True)
     
-    # Profile Picture field added
     profile_pic = db.Column(db.String(255), nullable=True, default='uploads/default_avatar.png')
 
     contributions = db.relationship('Contribution', backref='user', lazy=True)
@@ -33,9 +33,9 @@ class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     payment_method = db.Column(db.String(50), default='Mpesa')
-    account_type = db.Column(db.String(50), nullable=False) # Weekly Contribution, Personal Savings, Loan Repayment, Collateral Damage
+    account_type = db.Column(db.String(50), nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='Pending') # Pending, Approved, Declined
+    status = db.Column(db.String(20), default='Pending')
     date_made = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Loan(db.Model):
@@ -43,7 +43,7 @@ class Loan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='Pending') # Pending, Approved, Declined
+    status = db.Column(db.String(20), default='Pending')
     date_submitted = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Feedback(db.Model):
@@ -63,3 +63,9 @@ class Announcement(db.Model):
     file_path = db.Column(db.String(200), nullable=True)
     publisher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date_posted = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Setting(db.Model):
+    __tablename__ = 'setting'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.String(255), nullable=False)

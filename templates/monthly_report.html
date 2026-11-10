@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Monthly General Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h2, h4 { color: #1e3a8a; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        th { background-color: #f1f5f9; }
+        .btn { display: inline-block; padding: 0.5rem 1rem; background: #1e3a8a; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+        input, select { padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Monthly Contribution Report</h2>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem; gap: 10px;">
+        <form method="GET" action="{{ url_for('monthly_report') }}" style="margin-bottom: 0;">
+            <label>Month:</label>
+            <input type="number" name="month" value="{{ selected_month }}" min="1" max="12" style="width: 60px;">
+            <label style="margin-left: 10px;">Year:</label>
+            <input type="number" name="year" value="{{ selected_year }}" min="2020" max="2030" style="width: 80px;">
+            <button type="submit" class="btn" style="margin-left: 10px;">Filter</button>
+        </form>
+
+        <!-- Email Report Trigger Form -->
+        <form method="POST" action="{{ url_for('email_monthly_report', year=selected_year, month=selected_month) }}" style="margin-bottom: 0;" onsubmit="return confirm('Are you sure you want to email this report to all registered members?');">
+            <button type="submit" class="btn" style="background-color: #059669;">📧 Email Report to All Members</button>
+        </form>
+    </div>
+
+    <h4>Category Totals</h4>
+    <ul>
+        <li>Weekly Contribution: <b>{{ "%.2f"|format(totals_dict.get('Weekly Contribution', 0.0)) }} KES</b></li>
+        <li>Personal Savings: <b>{{ "%.2f"|format(totals_dict.get('Personal Savings', 0.0)) }} KES</b></li>
+        <li>Loan Repayment: <b>{{ "%.2f"|format(totals_dict.get('Loan Repayment', 0.0)) }} KES</b></li>
+        <li>Collateral Damage: <b>{{ "%.2f"|format(totals_dict.get('Collateral Damage', 0.0)) }} KES</b></li>
+    </ul>
+    <h3>Grand Total: {{ "%.2f"|format(grand_total) }} KES</h3>
+
+    <hr>
+
+    <h4>Detailed Transactions</h4>
+    <table>
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Account Type</th>
+                <th>Amount</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in contributions %}
+            <tr>
+                <td>{{ c.user.username }}</td>
+                <td>{{ c.account_type }}</td>
+                <td>{{ "%.2f"|format(c.amount) }} KES</td>
+                <td>{{ c.date_made.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align:center;">No approved contributions found for this period.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    <a href="{{ url_for('admin') }}" class="btn">Back to Dashboard</a>
+</div>
+</body>
+</html>

@@ -6,7 +6,8 @@ from email.mime.text import MIMEText
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Contribution, Loan, Feedback, Announcement
+from sqlalchemy import extract, func
+from models import db, User, Contribution, Loan, Feedback, Announcement, Setting
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -36,6 +37,15 @@ LEADERSHIP_ROLES = [
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def get_min_weekly_amount():
+    setting = Setting.query.filter_by(key='min_weekly_contribution').first()
+    if setting:
+        try:
+            return float(setting.value)
+        except ValueError:
+            return 100.0
+    return 100.0
 
 def is_contribution_late():
     now = datetime.now()
@@ -114,6 +124,12 @@ with app.app_context():
         hashed_pw = generate_password_hash(admin_pass, method='scrypt')
         new_admin = User(username='admin', email=admin_email, phone_number='0700000000', password=hashed_pw, role='System Admin')
         db.session.add(new_admin)
+        db.session.commit()
+    
+    # Initialize default setting if not present
+    default_setting = Setting.query.filter_by(key='min_weekly_contribution').first()
+    if not default_setting:
+        db.session.add(Setting(key='min_weekly_contribution', value='100.0'))
         db.session.commit()
 
 @app.route('/')
@@ -285,6 +301,141 @@ def delete_user(user_id):
     flash(f"User {target_user.username} has been removed from the system.")
     return redirect(url_for('admin'))
 
+@app.route('/admin/settings', methods=['POST'])
+def update_settings():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.username != 'admin':
+        flash('Unauthorized access.')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        min_weekly = float(request.form.get('min_weekly_contribution'))
+        if min_weekly < 0:
+            raise ValueError()
+    except (ValueError, TypeError):
+        flash('Invalid minimum contribution amount.')
+        return redirect(url_for('admin'))
+        
+    setting = Setting.query.filter_by(key='min_weekly_contribution').first()
+    if not setting:
+        setting = Setting(key='min_weekly_contribution', value=str(min_weekly))
+        db.session.add(setting)
+    else:
+        setting.value = str(min_weekly)
+    db.session.commit()
+    flash('Minimum weekly contribution updated successfully.')
+    return redirect(url_for('admin'))
+
+@app.route('/admin/monthly_report')
+def monthly_report():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.username != 'admin':
+        flash('Unauthorized access.')
+        return redirect(url_for('dashboard'))
+        
+    selected_month = request.args.get('month', datetime.utcnow().month, type=int)
+    selected_year = request.args.get('year', datetime.utcnow().year, type=int)
+    
+    contributions = Contribution.query.options(db.joinedload(Contribution.user)).filter(
+        extract('month', Contribution.date_made) == selected_month,
+        extract('year', Contribution.date_made) == selected_year,
+        Contribution.status == 'Approved'
+    ).order_by(Contribution.date_made.desc()).all()
+    
+    totals = db.session.query(
+        Contribution.account_type, 
+        func.sum(Contribution.amount)
+    ).filter(
+        extract('month', Contribution.date_made) == selected_month,
+        extract('year', Contribution.date_made) == selected_year,
+        Contribution.status == 'Approved'
+    ).group_by(Contribution.account_type).all()
+    
+    totals_dict = {item[0]: item[1] for item in totals}
+    grand_total = sum(totals_dict.values())
+    
+    return render_template('monthly_report.html', 
+                           user=admin_user,
+                           contributions=contributions, 
+                           totals_dict=totals_dict, 
+                           grand_total=grand_total,
+                           selected_month=selected_month,
+                           selected_year=selected_year)
+@app.route('/admin/email_monthly_report/<int:year>/<int:month>', methods=['POST'])
+def email_monthly_report(year, month):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or admin_user.username != 'admin':
+        flash('Unauthorized access.')
+        return redirect(url_for('dashboard'))
+        
+    # Get contributions and calculate totals for the specified month/year
+    contributions = Contribution.query.options(db.joinedload(Contribution.user)).filter(
+        extract('month', Contribution.date_made) == month,
+        extract('year', Contribution.date_made) == year,
+        Contribution.status == 'Approved'
+    ).all()
+    
+    totals = db.session.query(
+        Contribution.account_type, 
+        func.sum(Contribution.amount)
+    ).filter(
+        extract('month', Contribution.date_made) == month,
+        extract('year', Contribution.date_made) == year,
+        Contribution.status == 'Approved'
+    ).group_by(Contribution.account_type).all()
+    
+    totals_dict = {item[0]: item[1] for item in totals}
+    grand_total = sum(totals_dict.values())
+    
+    # Build email body content
+    report_summary = f"""
+Monthly General Report - {month}/{year}
+=====================================
+
+CATEGORY TOTALS:
+- Weekly Contribution: {totals_dict.get('Weekly Contribution', 0.0):.2f} KES
+- Personal Savings: {totals_dict.get('Personal Savings', 0.0):.2f} KES
+- Loan Repayment: {totals_dict.get('Loan Repayment', 0.0):.2f} KES
+- Collateral Damage: {totals_dict.get('Collateral Damage', 0.0):.2f} KES
+-------------------------------------
+GRAND TOTAL: {grand_total:.2f} KES
+
+TRANSACTION DETAILS:
+"""
+    for c in contributions:
+        report_summary += f"- {c.date_made.strftime('%Y-%m-%d')} | {c.user.username} | {c.account_type} | {c.amount:.2f} KES\n"
+        
+    report_summary += "\nRegards,\nSACCO Administration"
+
+    # Fetch all member emails
+    members = User.query.all()
+    
+    try:
+        sender_email = os.environ.get('MAIL_USERNAME', 'welimodavid781@gmail.com')
+        sender_password = os.environ.get('MAIL_PASSWORD', 'ghdtalvrietsjobb')
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender_email, sender_password)
+            for member in members:
+                if member.email:
+                    msg = MIMEText(f"Hello {member.username},\n\nPlease find below the monthly general report for {month}/{year}:\n{report_summary}")
+                    msg['Subject'] = f'Monthly General Report ({month}/{year}) - SACCO System'
+                    msg['From'] = sender_email
+                    msg['To'] = member.email
+                    server.sendmail(sender_email, member.email, msg.as_string())
+                    
+        flash(f'Monthly report for {month}/{year} successfully emailed to all members!')
+    except Exception as e:
+        flash(f'Failed to send report emails: {str(e)}')
+        
+    return redirect(url_for('monthly_report', month=month, year=year))
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -342,7 +493,7 @@ def dashboard():
         return redirect(url_for('dashboard'))
 
     late_status = is_contribution_late()
-    min_amount = 100.0 if late_status else 100.0
+    min_amount = get_min_weekly_amount()
 
     contributions = Contribution.query.filter_by(user_id=user.id).order_by(Contribution.date_made.desc()).all()
     loans = get_loans_for_user(user.id)
@@ -419,8 +570,7 @@ def contribute():
         flash('Invalid contribution amount.')
         return redirect(url_for('dashboard'))
 
-    late_status = is_contribution_late()
-    limit = 100.0 if late_status else 100.0
+    limit = get_min_weekly_amount()
 
     if account_type == 'Weekly Contribution' and amount < limit:
         flash(f'Weekly contribution must be at least {limit} KES.')
@@ -729,6 +879,8 @@ def admin():
     
     grand_total = total_weekly + total_savings + total_collateral + total_repayment
 
+    current_min_weekly = get_min_weekly_amount()
+
     member_summaries = []
     for m in members:
         m_contribs = [c for c in approved_contribs if c.user_id == m.id]
@@ -771,6 +923,7 @@ def admin():
         wallet_transfers=wallet_transfers,
         total_wallet_topups=total_wallet_topups,
         grand_total=grand_total,
+        current_min_weekly=current_min_weekly,
         member_summaries=member_summaries
     )
 
