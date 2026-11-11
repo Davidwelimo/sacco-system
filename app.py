@@ -863,7 +863,8 @@ def update_role(user_id):
         flash('Cannot modify the primary admin account role.', 'danger')
         return redirect(url_for('admin'))
         
-    if new_role in LEADERSHIP_ROLES or new_role == 'Member':
+    valid_roles = ['HR MANAGER', 'ICT DIRECTOR', 'FINANCE CHAIRMAN', 'System Admin', 'Member']
+    if new_role in valid_roles:
         target_user.role = new_role
         db.session.commit()
         flash(f"Role updated successfully for {target_user.username}.")
