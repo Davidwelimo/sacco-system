@@ -133,6 +133,7 @@
 
             <ul class="sidebar-menu">
                 <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
+                <li><a href="{{ url_for('profile') }}">Profile Settings</a></li>
                 <li><a href="{{ url_for('change_password') }}">Change Password</a></li>
                 {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
                 <li><a href="{{ url_for('admin') }}">Admin Panel</a></li>

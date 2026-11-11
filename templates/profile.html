@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Settings - SACCO</title>
+    <style>
+        :root { --primary: #1e3a8a; --bg: #f8fafc; --border: #e2e8f0; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: #1e293b; margin: 0; padding: 2rem; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 450px; border: 1px solid var(--border); }
+        h2 { color: var(--primary); margin-top: 0; }
+        .alert { background: #dbeafe; color: #1e40af; padding: 10px; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #334155; }
+        input { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.95rem; }
+        button { width: 100%; background-color: var(--primary); color: white; border: none; padding: 0.75rem; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 1rem; }
+        button:hover { background-color: #1d4ed8; }
+        .links { margin-top: 1rem; text-align: center; font-size: 0.9rem; }
+        .links a { color: #2563eb; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Update Profile</h2>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert">{% for msg in messages %}<p style="margin:0;">{{ msg }}</p>{% endfor %}</div>
+          {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <div class="form-group">
+                <label>Username (Protected)</label>
+                <input type="text" value="{{ user.username }}" disabled style="background-color: #f1f5f9; cursor: not-allowed;">
+            </div>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" value="{{ user.email }}" required>
+            </div>
+            <div class="form-group">
+                <label>Phone Number (for SMS Alerts)</label>
+                <input type="text" name="phone_number" value="{{ user.phone_number or '' }}" placeholder="e.g. 2547XXXXXXXX">
+            </div>
+            <button type="submit">Save Changes</button>
+        </form>
+        <div class="links">
+            <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+        </div>
+    </div>
+</body>
+</html>

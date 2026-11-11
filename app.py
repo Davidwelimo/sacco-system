@@ -890,6 +890,34 @@ def switch_role():
         
     flash("Invalid role selected.")
     return redirect(url_for('dashboard'))
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    
+    if request.method == 'POST':
+        email = request.form.get('email')
+        phone_number = request.form.get('phone_number')
+        
+        # Check if email is already taken by another user
+        existing_email = User.query.filter_by(email=email).first()
+        if existing_email and existing_email.id != user.id:
+            flash('Email already in use by another account.')
+            return redirect(url_for('profile'))
+            
+        try:
+            user.email = email
+            user.phone_number = phone_number
+            db.session.commit()
+            flash('Profile updated successfully.')
+        except Exception:
+            db.session.rollback()
+            flash('An error occurred while updating your profile.')
+            
+        return redirect(url_for('profile'))
+        
+    return render_template('profile.html', user=user)
 
 @app.route('/admin')
 def admin():
