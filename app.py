@@ -620,7 +620,14 @@ def request_loan():
     db.session.add(new_loan)
     db.session.commit()
     
-    # Dynamically fetch whoever currently has the leadership roles
+    # DEBUG: Print all users and their roles to check database state
+    all_users = User.query.all()
+    print("--- DEBUG USERS IN DB ---")
+    for u in all_users:
+        print(f"User: {u.username}, Role: {u.role}, Email: {u.email}")
+    print("-------------------------")
+
+    # Dynamically fetch leadership
     leaders = User.query.filter(
         (User.role.ilike('%FINANCE CHAIRMAN%')) | 
         (User.role.ilike('%System Admin%')) | 
@@ -628,13 +635,13 @@ def request_loan():
     ).all()
     
     recipient_emails = [l.email for l in leaders if l and l.email]
-    recipient_phones = [l.phone_number for l in leaders if l and getattr(l, 'phone_number', None)]
-    
+    print(f"DEBUG: Found recipient emails -> {recipient_emails}")
+
     # Fallback default if no matching leader email found
     if not recipient_emails:
         recipient_emails = ['chairman@sacco.com', 'finance@sacco.com']
 
-    # 2. Email Leadership (Dynamically fetched current holders)
+    # 2. Email Leadership
     try:
         sender_email = os.environ.get('MAIL_USERNAME', 'welimodavid781@gmail.com')
         sender_password = os.environ.get('MAIL_PASSWORD', 'ghdtalvrietsjobb')
@@ -648,29 +655,9 @@ def request_loan():
             for recipient in recipient_emails:
                 msg['To'] = recipient
                 server.sendmail(sender_email, recipient, msg.as_string())
+        print("DEBUG: Email sent successfully!")
     except Exception as e:
         print(f"Email failed: {e}")
-
-    # 3. Send SMS notifications to Applicant and Current Leaders via Onfon Mobile
-    try:
-        sms_url = "https://api.onfonmedia.co.ke/v1/sms/SendSMS"
-        
-        all_phones = recipient_phones.copy()
-        if getattr(user, 'phone_number', None) and user.phone_number not in all_phones:
-            all_phones.append(user.phone_number)
-            
-        for phone in all_phones:
-            sms_payload = {
-                "User_Name": os.environ.get('ONFON_USERNAME', ''),
-                "PassWord": os.environ.get('ONFON_PASSWORD', ''),
-                "SenderID": os.environ.get('ONFON_SENDER_ID', 'SACCO'),
-                "PhoneNumber": phone,
-                "Text": f"SACCO Alert: New loan request of {amount:.2f} KES submitted by {user.username}. Check portal to review."
-            }
-            if phone:
-                requests.post(sms_url, json=sms_payload, timeout=5)
-    except Exception as e:
-        print(f"SMS failed: {e}")
 
     flash('Loan request submitted successfully and notifications sent to leadership.')
     return redirect(url_for('dashboard'))
