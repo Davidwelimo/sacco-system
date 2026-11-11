@@ -620,21 +620,21 @@ def request_loan():
     db.session.add(new_loan)
     db.session.commit()
     
-    # Gather leadership contacts (Admin & Finance Chairman)
+    # Dynamically fetch whoever currently has the leadership roles
     leaders = User.query.filter(
-        (User.role == 'FINANCE CHAIRMAN') | 
-        (User.role == 'System Admin') | 
+        (User.role.ilike('%FINANCE CHAIRMAN%')) | 
+        (User.role.ilike('%System Admin%')) | 
         (User.username == 'admin')
     ).all()
     
-    recipient_emails = [l.email for l in leaders if l.email]
-    recipient_phones = [l.phone_number for l in leaders if getattr(l, 'phone_number', None)]
+    recipient_emails = [l.email for l in leaders if l and l.email]
+    recipient_phones = [l.phone_number for l in leaders if l and getattr(l, 'phone_number', None)]
     
-    # Always include fallback leadership emails if needed
+    # Fallback default if no matching leader email found
     if not recipient_emails:
         recipient_emails = ['chairman@sacco.com', 'finance@sacco.com']
 
-    # 2. Email Leadership (Finance Chairman & Admin)
+    # 2. Email Leadership (Dynamically fetched current holders)
     try:
         sender_email = os.environ.get('MAIL_USERNAME', 'welimodavid781@gmail.com')
         sender_password = os.environ.get('MAIL_PASSWORD', 'ghdtalvrietsjobb')
@@ -651,11 +651,10 @@ def request_loan():
     except Exception as e:
         print(f"Email failed: {e}")
 
-    # 3. Send SMS notifications to Applicant, Finance Chairman, and Admin via Onfon Mobile
+    # 3. Send SMS notifications to Applicant and Current Leaders via Onfon Mobile
     try:
         sms_url = "https://api.onfonmedia.co.ke/v1/sms/SendSMS"
         
-        # Numbers to notify: applicant + leaders
         all_phones = recipient_phones.copy()
         if getattr(user, 'phone_number', None) and user.phone_number not in all_phones:
             all_phones.append(user.phone_number)
@@ -664,7 +663,7 @@ def request_loan():
             sms_payload = {
                 "User_Name": os.environ.get('ONFON_USERNAME', ''),
                 "PassWord": os.environ.get('ONFON_PASSWORD', ''),
-                "SenderID": os.environ.get('ONfon_SENDER_ID', 'SACCO'),
+                "SenderID": os.environ.get('ONFON_SENDER_ID', 'SACCO'),
                 "PhoneNumber": phone,
                 "Text": f"SACCO Alert: New loan request of {amount:.2f} KES submitted by {user.username}. Check portal to review."
             }
