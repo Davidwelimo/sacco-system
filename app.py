@@ -615,16 +615,29 @@ def request_loan():
         flash('Invalid loan amount.')
         return redirect(url_for('dashboard'))
 
-    # 1. Save loan request to database (without 'reason')
+    # 1. Save loan request to database
     new_loan = Loan(user_id=user.id, amount=amount, status='Pending')
     db.session.add(new_loan)
     db.session.commit()
     
-    # 2. Email Chairman & Finance Officer
+    # Gather leadership contacts (Admin & Finance Chairman)
+    leaders = User.query.filter(
+        (User.role == 'FINANCE CHAIRMAN') | 
+        (User.role == 'System Admin') | 
+        (User.username == 'admin')
+    ).all()
+    
+    recipient_emails = [l.email for l in leaders if l.email]
+    recipient_phones = [l.phone_number for l in leaders if getattr(l, 'phone_number', None)]
+    
+    # Always include fallback leadership emails if needed
+    if not recipient_emails:
+        recipient_emails = ['chairman@sacco.com', 'finance@sacco.com']
+
+    # 2. Email Leadership (Finance Chairman & Admin)
     try:
         sender_email = os.environ.get('MAIL_USERNAME', 'welimodavid781@gmail.com')
         sender_password = os.environ.get('MAIL_PASSWORD', 'ghdtalvrietsjobb')
-        recipients = ['chairman@sacco.com', 'finance@sacco.com']
         
         msg = MIMEText(f"Hello,\n\nA new loan request of {amount:.2f} KES has been submitted by {user.username}.\nReason: {reason}\n\nPlease check the admin dashboard to review.")
         msg['Subject'] = f'New Loan Request - {user.username}'
@@ -632,30 +645,36 @@ def request_loan():
         
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(sender_email, sender_password)
-            for recipient in recipients:
+            for recipient in recipient_emails:
                 msg['To'] = recipient
                 server.sendmail(sender_email, recipient, msg.as_string())
     except Exception as e:
         print(f"Email failed: {e}")
 
-    # 3. Send SMS notification to applicant via Onfon Mobile
+    # 3. Send SMS notifications to Applicant, Finance Chairman, and Admin via Onfon Mobile
     try:
         sms_url = "https://api.onfonmedia.co.ke/v1/sms/SendSMS"
-        sms_payload = {
-            "User_Name": os.environ.get('ONFON_USERNAME', ''),
-            "PassWord": os.environ.get('ONFON_PASSWORD', ''),
-            "SenderID": os.environ.get('ONFON_SENDER_ID', 'SACCO'),
-            "PhoneNumber": getattr(user, 'phone_number', ''),
-            "Text": f"Hello {user.username}, your loan request of {amount:.2f} KES has been received and is pending review."
-        }
-        if sms_payload["PhoneNumber"]:
-            requests.post(sms_url, json=sms_payload, timeout=5)
+        
+        # Numbers to notify: applicant + leaders
+        all_phones = recipient_phones.copy()
+        if getattr(user, 'phone_number', None) and user.phone_number not in all_phones:
+            all_phones.append(user.phone_number)
+            
+        for phone in all_phones:
+            sms_payload = {
+                "User_Name": os.environ.get('ONFON_USERNAME', ''),
+                "PassWord": os.environ.get('ONFON_PASSWORD', ''),
+                "SenderID": os.environ.get('ONfon_SENDER_ID', 'SACCO'),
+                "PhoneNumber": phone,
+                "Text": f"SACCO Alert: New loan request of {amount:.2f} KES submitted by {user.username}. Check portal to review."
+            }
+            if phone:
+                requests.post(sms_url, json=sms_payload, timeout=5)
     except Exception as e:
         print(f"SMS failed: {e}")
 
-    flash('Loan request submitted successfully and notifications sent.')
+    flash('Loan request submitted successfully and notifications sent to leadership.')
     return redirect(url_for('dashboard'))
-
 @app.route('/submit_feedback', methods=['POST'])
 def submit_feedback():
     if 'user_id' not in session:
