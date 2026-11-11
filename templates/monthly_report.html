@@ -35,10 +35,11 @@
 
     <h4>Category Totals</h4>
     <ul>
-        <li>Weekly Contribution: <b>{{ "%.2f"|format(totals_dict.get('Weekly Contribution', 0.0)) }} KES</b></li>
-        <li>Personal Savings: <b>{{ "%.2f"|format(totals_dict.get('Personal Savings', 0.0)) }} KES</b></li>
-        <li>Loan Repayment: <b>{{ "%.2f"|format(totals_dict.get('Loan Repayment', 0.0)) }} KES</b></li>
-        <li>Collateral Damage: <b>{{ "%.2f"|format(totals_dict.get('Collateral Damage', 0.0)) }} KES</b></li>
+        {% for category, amount in totals_dict.items() %}
+        <li>{{ category }}: <b>{{ "%.2f"|format(amount) }} KES</b></li>
+        {% else %}
+        <li>No categories found for this period.</li>
+        {% endfor %}
     </ul>
     <h3>Grand Total: {{ "%.2f"|format(grand_total) }} KES</h3>
 
