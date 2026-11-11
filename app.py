@@ -454,7 +454,10 @@ def register():
 
         try:
             hashed_pw = generate_password_hash(password, method='scrypt')
-            user = User(username=username, email=email, phone_number=phone_number, password=hashed_pw, role=role)
+            # Ensure a valid role is assigned, defaulting to HR MANAGER if none selected
+            assigned_role = role if role in ['HR MANAGER', 'ICT DIRECTOR', 'FINANCE CHAIRMAN'] else 'HR MANAGER'
+            
+            user = User(username=username, email=email, phone_number=phone_number, password=hashed_pw, role=assigned_role)
             db.session.add(user)
             db.session.commit()
             session['user_id'] = user.id
@@ -465,7 +468,6 @@ def register():
             flash('An error occurred during registration.')
             return redirect(url_for('register'))
     return render_template('register.html')
-
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
@@ -606,15 +608,52 @@ def request_loan():
         
     try:
         amount = float(request.form.get('amount'))
+        reason = request.form.get('reason', '')
         if amount <= 0:
             raise ValueError()
     except (ValueError, TypeError):
         flash('Invalid loan amount.')
         return redirect(url_for('dashboard'))
 
-    db.session.add(Loan(user_id=user.id, amount=amount, status='Pending'))
+    # 1. Save loan request to database (without 'reason')
+    new_loan = Loan(user_id=user.id, amount=amount, status='Pending')
+    db.session.add(new_loan)
     db.session.commit()
-    flash('Loan request submitted successfully.')
+    
+    # 2. Email Chairman & Finance Officer
+    try:
+        sender_email = os.environ.get('MAIL_USERNAME', 'welimodavid781@gmail.com')
+        sender_password = os.environ.get('MAIL_PASSWORD', 'ghdtalvrietsjobb')
+        recipients = ['chairman@sacco.com', 'finance@sacco.com']
+        
+        msg = MIMEText(f"Hello,\n\nA new loan request of {amount:.2f} KES has been submitted by {user.username}.\nReason: {reason}\n\nPlease check the admin dashboard to review.")
+        msg['Subject'] = f'New Loan Request - {user.username}'
+        msg['From'] = sender_email
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender_email, sender_password)
+            for recipient in recipients:
+                msg['To'] = recipient
+                server.sendmail(sender_email, recipient, msg.as_string())
+    except Exception as e:
+        print(f"Email failed: {e}")
+
+    # 3. Send SMS notification to applicant via Onfon Mobile
+    try:
+        sms_url = "https://api.onfonmedia.co.ke/v1/sms/SendSMS"
+        sms_payload = {
+            "User_Name": os.environ.get('ONFON_USERNAME', ''),
+            "PassWord": os.environ.get('ONFON_PASSWORD', ''),
+            "SenderID": os.environ.get('ONFON_SENDER_ID', 'SACCO'),
+            "PhoneNumber": getattr(user, 'phone_number', ''),
+            "Text": f"Hello {user.username}, your loan request of {amount:.2f} KES has been received and is pending review."
+        }
+        if sms_payload["PhoneNumber"]:
+            requests.post(sms_url, json=sms_payload, timeout=5)
+    except Exception as e:
+        print(f"SMS failed: {e}")
+
+    flash('Loan request submitted successfully and notifications sent.')
     return redirect(url_for('dashboard'))
 
 @app.route('/submit_feedback', methods=['POST'])

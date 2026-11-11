@@ -145,7 +145,7 @@
             <ul class="sidebar-menu">
                 <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
                 <li><a href="{{ url_for('change_password') }}">Change Password</a></li>
-                {% if user.role in ['System Admin', 'Chairman', 'Finance', 'HR & Secretary Manager', 'ICT Director'] %}
+                {% if user.role in ['System Admin', 'HR MANAGER', 'ICT DIRECTOR', 'FINANCE CHAIRMAN'] %}
                 <li><a href="{{ url_for('admin') }}" class="active">Admin Panel</a></li>
                 {% endif %}
             </ul>
@@ -309,11 +309,9 @@
                                     {% if member.username != 'admin' %}
                                     <form action="{{ url_for('update_role', user_id=member.id) }}" method="POST" style="display:inline;">
                                         <select name="role" class="role-select">
-                                            <option value="System Admin" {% if member.role == 'System Admin' %}selected{% endif %}>System Admin</option>
-                                            <option value="Chairman" {% if member.role == 'Chairman' %}selected{% endif %}>Chairman</option>
-                                            <option value="Finance" {% if member.role == 'Finance' %}selected{% endif %}>Finance</option>
-                                            <option value="HR & Secretary Manager" {% if member.role == 'HR & Secretary Manager' %}selected{% endif %}>HR & Secretary Manager</option>
-                                            <option value="ICT Director" {% if member.role == 'ICT Director' %}selected{% endif %}>ICT Director</option>
+                                            <option value="HR MANAGER" {% if member.role == 'HR MANAGER' %}selected{% endif %}>HR MANAGER</option>
+                                            <option value="ICT DIRECTOR" {% if member.role == 'ICT DIRECTOR' %}selected{% endif %}>ICT DIRECTOR</option>
+                                            <option value="FINANCE CHAIRMAN" {% if member.role == 'FINANCE CHAIRMAN' %}selected{% endif %}>FINANCE CHAIRMAN</option>
                                         </select>
                                         <button type="submit" class="btn-save">Save</button>
                                     </form>
