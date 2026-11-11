@@ -650,12 +650,12 @@ def request_loan():
         msg = MIMEText(f"Hello,\n\nA new loan request of {amount:.2f} KES has been submitted by {user.username}.\nReason: {reason}\n\nPlease check the admin dashboard to review.")
         msg['Subject'] = f'New Loan Request - {user.username}'
         msg['From'] = sender_email
+        msg['To'] = ", ".join(recipient_emails)  # Fixed: Comma-separated string prevents multiple headers RFC 5322 error
         
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(sender_email, sender_password)
-            for recipient in recipient_emails:
-                msg['To'] = recipient
-                server.sendmail(sender_email, recipient, msg.as_string())
+            server.sendmail(sender_email, recipient_emails, msg.as_string())
+            
         print("DEBUG: Email sent successfully!")
     except Exception as e:
         print(f"Email failed: {e}")
@@ -865,6 +865,8 @@ def update_role(user_id):
     new_role = request.form.get('role')
     target_user = User.query.get_or_404(user_id)
     
+    print(f"DEBUG UPDATE ROLE: User {target_user.username} (ID: {target_user.id}) being updated to role -> '{new_role}'")
+    
     if target_user.username == 'admin':
         flash('Cannot modify the primary admin account role.', 'danger')
         return redirect(url_for('admin'))
@@ -873,12 +875,13 @@ def update_role(user_id):
     if new_role in valid_roles:
         target_user.role = new_role
         db.session.commit()
+        print(f"DEBUG: Role successfully committed to DB: {target_user.username} -> {target_user.role}")
         flash(f"Role updated successfully for {target_user.username}.")
     else:
+        print(f"DEBUG: Invalid role rejected: '{new_role}'")
         flash("Invalid role selected.")
         
     return redirect(url_for('admin'))
-
 @app.route('/switch_role', methods=['POST'])
 def switch_role():
     if 'user_id' not in session:
