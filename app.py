@@ -627,15 +627,16 @@ def request_loan():
         print(f"User: {u.username}, Role: {u.role}, Email: {u.email}")
     print("-------------------------")
 
-    # Dynamically fetch leadership
+    # Dynamically fetch leadership flexibly to ensure current holders are caught
     leaders = User.query.filter(
-        (User.role.ilike('%FINANCE CHAIRMAN%')) | 
-        (User.role.ilike('%System Admin%')) | 
+        (User.role.ilike('%finance%')) | 
+        (User.role.ilike('%admin%')) |
         (User.username == 'admin')
     ).all()
     
     recipient_emails = [l.email for l in leaders if l and l.email]
-    print(f"DEBUG: Found recipient emails -> {recipient_emails}")
+    print(f"DEBUG: Found leaders -> {[(l.username, l.role, l.email) for l in leaders]}")
+    print(f"DEBUG: Final recipient emails -> {recipient_emails}")
 
     # Fallback default if no matching leader email found
     if not recipient_emails:
